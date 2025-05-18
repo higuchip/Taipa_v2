@@ -32,4 +32,5 @@ Thumbs.db
 data/
 output/
 temp/
+temp_worldclim/
 .streamlit/secrets.toml
