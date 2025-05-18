@@ -16,190 +16,237 @@ def calculate_vif(df):
     return vif_data
 
 def render_page():
-    st.title("An·lise de Vari·veis Ambientais")
-    st.markdown("An·lise de correlaÁ„o e seleÁ„o de vari·veis bioclim·ticas")
+    st.title("An√°lise de Vari√°veis Ambientais")
+    st.markdown("An√°lise de correla√ß√£o e sele√ß√£o de vari√°veis bioclim√°ticas")
     
-    # Get bioclimatic variables
-    variables = get_worldclim_layers()
+    # Configuration section
+    st.subheader("1. Configura√ß√£o da An√°lise")
     
-    # Variable selection
-    st.subheader("1. SeleÁ„o de Vari·veis")
-    
-    col1, col2 = st.columns([3, 1])
+    col1, col2 = st.columns(2)
     
     with col1:
-        selected_vars = st.multiselect(
-            "Selecione as vari·veis bioclim·ticas",
-            options=[f"{v['code']} - {v['name']}" for v in variables],
-            default=[f"{v['code']} - {v['name']}" for v in variables[:5]]
+        analysis_type = st.selectbox(
+            "Tipo de an√°lise",
+            ["An√°lise com dados de exemplo", "Upload de arquivo de ocorr√™ncias"]
         )
     
     with col2:
-        analysis_type = st.radio(
-            "Tipo de an·lise",
-            ["CorrelaÁ„o", "VIF", "Ambos"]
+        vif_threshold = st.number_input(
+            "Threshold VIF",
+            min_value=1.0,
+            max_value=20.0,
+            value=5.0,
+            step=0.5,
+            help="Vari√°veis com VIF > threshold ser√£o marcadas como colineares"
         )
     
-    # Data source
-    st.subheader("2. Fonte de Dados")
+    # WorldClim layers info
+    layers_info = get_worldclim_layers()
     
-    data_source = st.radio(
-        "Escolha a fonte de dados",
-        ["Dados simulados (MVP)", "Upload de arquivo CSV", "Extrair de rasters"]
+    # Variable selection
+    st.subheader("2. Sele√ß√£o de Vari√°veis")
+    
+    selected_vars = st.multiselect(
+        "Selecione as vari√°veis bioclim√°ticas",
+        options=list(layers_info.keys()),
+        default=list(layers_info.keys())[:10],
+        format_func=lambda x: f"{x}: {layers_info[x]}"
     )
     
-    df = None
-    
-    if data_source == "Dados simulados (MVP)":
-        if st.button("Gerar dados simulados", type="primary"):
-            with st.spinner("Gerando dados..."):
-                # Generate simulated data
-                n_points = 100
-                selected_codes = [v.split(" - ")[0] for v in selected_vars]
+    if st.button("Analisar Vari√°veis", type="primary", use_container_width=True):
+        if not selected_vars:
+            st.warning("Por favor, selecione pelo menos uma vari√°vel")
+        else:
+            with st.spinner("Processando an√°lise..."):
+                # Generate sample data
+                np.random.seed(42)
+                n_samples = 1000
                 
+                # Create correlated variables
                 data = {}
-                for code in selected_codes:
-                    if "bio1" in code:  # Temperature-based
-                        data[code] = np.random.normal(20, 5, n_points)
-                    elif "bio12" in code:  # Precipitation-based
-                        data[code] = np.random.normal(1200, 300, n_points)
-                    else:
-                        data[code] = np.random.normal(50, 20, n_points)
+                base = np.random.randn(n_samples)
                 
-                # Add some correlations
-                if len(selected_codes) > 1:
-                    for i in range(1, len(selected_codes)):
-                        correlation = np.random.uniform(0.3, 0.8)
-                        data[selected_codes[i]] += correlation * data[selected_codes[0]]
+                for i, var in enumerate(selected_vars):
+                    if i == 0:
+                        data[var] = base + np.random.randn(n_samples) * 0.5
+                    elif i < 3:
+                        data[var] = base * 0.8 + np.random.randn(n_samples) * 0.6
+                    else:
+                        data[var] = np.random.randn(n_samples)
                 
                 df = pd.DataFrame(data)
-                st.session_state['env_data'] = df
-    
-    elif data_source == "Upload de arquivo CSV":
-        uploaded_file = st.file_uploader("Escolha um arquivo CSV", type="csv")
-        if uploaded_file is not None:
-            df = pd.read_csv(uploaded_file)
-            st.session_state['env_data'] = df
-    
-    elif data_source == "Extrair de rasters":
-        st.info("Funcionalidade de extraÁ„o de rasters ser· implementada na prÛxima fase")
-        
-        # Placeholder for raster extraction
-        col1, col2 = st.columns(2)
-        with col1:
-            points_file = st.file_uploader("Upload de pontos (CSV)", type="csv")
-        with col2:
-            raster_folder = st.text_input("Caminho para rasters", placeholder="/path/to/rasters")
-        
-        if st.button("Extrair valores"):
-            st.warning("Esta funcionalidade est· em desenvolvimento")
-    
-    # Analysis section
-    if 'env_data' in st.session_state and st.session_state['env_data'] is not None:
-        df = st.session_state['env_data']
-        
-        st.subheader("3. An·lise de CorrelaÁ„o")
-        
-        # Filter dataframe for selected variables
-        selected_codes = [v.split(" - ")[0] for v in selected_vars]
-        df_filtered = df[[col for col in df.columns if col in selected_codes]]
-        
-        if len(df_filtered.columns) > 1:
-            # Correlation analysis
-            if analysis_type in ["CorrelaÁ„o", "Ambos"]:
-                st.markdown("#### Matriz de CorrelaÁ„o")
                 
-                corr = df_filtered.corr()
+                # Correlation Analysis
+                st.subheader("3. An√°lise de Correla√ß√£o")
                 
-                # Correlation heatmap
-                fig, ax = plt.subplots(figsize=(10, 8))
-                sns.heatmap(corr, annot=True, cmap='coolwarm', center=0, 
-                           square=True, linewidths=0.5, cbar_kws={"shrink": .8}, ax=ax)
-                ax.set_title("Matriz de CorrelaÁ„o das Vari·veis Bioclim·ticas")
-                plt.tight_layout()
-                st.pyplot(fig)
+                col1, col2 = st.columns([2, 1])
                 
-                # Correlation table
-                with st.expander("Tabela de CorrelaÁ„o"):
-                    st.dataframe(corr, use_container_width=True)
-            
-            # VIF analysis
-            if analysis_type in ["VIF", "Ambos"]:
-                st.markdown("#### An·lise de VIF (Variance Inflation Factor)")
+                with col1:
+                    fig, ax = plt.subplots(figsize=(10, 8))
+                    correlation_matrix = df.corr()
+                    mask = np.triu(np.ones_like(correlation_matrix), k=1)
+                    sns.heatmap(
+                        correlation_matrix,
+                        mask=mask,
+                        annot=True,
+                        fmt='.2f',
+                        cmap='coolwarm',
+                        center=0,
+                        vmin=-1,
+                        vmax=1,
+                        ax=ax
+                    )
+                    plt.title("Matriz de Correla√ß√£o")
+                    st.pyplot(fig)
                 
-                try:
-                    vif_data = calculate_vif(df_filtered)
+                with col2:
+                    st.markdown("### Correla√ß√µes Altas")
+                    threshold = 0.7
+                    high_corr = []
                     
-                    # VIF bar plot
+                    for i in range(len(correlation_matrix.columns)):
+                        for j in range(i+1, len(correlation_matrix.columns)):
+                            if abs(correlation_matrix.iloc[i, j]) > threshold:
+                                high_corr.append({
+                                    'Par': f"{correlation_matrix.columns[i]} - {correlation_matrix.columns[j]}",
+                                    'Correla√ß√£o': correlation_matrix.iloc[i, j]
+                                })
+                    
+                    if high_corr:
+                        high_corr_df = pd.DataFrame(high_corr)
+                        st.dataframe(high_corr_df, hide_index=True)
+                    else:
+                        st.info("Nenhuma correla√ß√£o alta encontrada")
+                
+                # VIF Analysis
+                st.subheader("4. An√°lise VIF (Variance Inflation Factor)")
+                
+                vif_results = calculate_vif(df)
+                vif_results['Status'] = vif_results['VIF'].apply(
+                    lambda x: '‚ùå Colinear' if x > vif_threshold else '‚úÖ OK'
+                )
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
                     fig, ax = plt.subplots(figsize=(10, 6))
-                    bars = ax.bar(vif_data['Variable'], vif_data['VIF'])
-                    
-                    # Color bars based on VIF value
-                    for i, bar in enumerate(bars):
-                        if vif_data['VIF'].iloc[i] > 10:
-                            bar.set_color('red')
-                        elif vif_data['VIF'].iloc[i] > 5:
-                            bar.set_color('orange')
-                        else:
-                            bar.set_color('green')
-                    
-                    ax.axhline(y=5, color='orange', linestyle='--', label='VIF = 5')
-                    ax.axhline(y=10, color='red', linestyle='--', label='VIF = 10')
-                    ax.set_xlabel('Vari·veis')
-                    ax.set_ylabel('VIF')
-                    ax.set_title('Variance Inflation Factor por Vari·vel')
+                    colors = ['red' if vif > vif_threshold else 'green' for vif in vif_results['VIF']]
+                    bars = ax.barh(vif_results['Variable'], vif_results['VIF'], color=colors)
+                    ax.axvline(x=vif_threshold, color='black', linestyle='--', label=f'Threshold ({vif_threshold})')
+                    ax.set_xlabel('VIF Value')
+                    ax.set_title('VIF por Vari√°vel')
                     ax.legend()
-                    plt.xticks(rotation=45)
+                    
+                    # Add value labels on bars
+                    for bar in bars:
+                        width = bar.get_width()
+                        ax.text(width, bar.get_y() + bar.get_height()/2, 
+                               f'{width:.2f}', 
+                               ha='left' if width < vif_threshold else 'right',
+                               va='center')
+                    
                     plt.tight_layout()
                     st.pyplot(fig)
-                    
-                    # VIF table
-                    with st.expander("Tabela de VIF"):
-                        st.dataframe(vif_data, use_container_width=True)
-                    
-                    # Recommendations
-                    st.markdown("#### RecomendaÁıes")
-                    high_vif = vif_data[vif_data['VIF'] > 10]
-                    if not high_vif.empty:
-                        st.warning(f"† Vari·veis com VIF > 10 (alta multicolinearidade): {', '.join(high_vif['Variable'].tolist())}")
-                    
-                    medium_vif = vif_data[(vif_data['VIF'] > 5) & (vif_data['VIF'] <= 10)]
-                    if not medium_vif.empty:
-                        st.info(f"9 Vari·veis com VIF entre 5-10 (multicolinearidade moderada): {', '.join(medium_vif['Variable'].tolist())}")
-                    
-                    low_vif = vif_data[vif_data['VIF'] <= 5]
-                    if not low_vif.empty:
-                        st.success(f" Vari·veis com VIF < 5 (baixa multicolinearidade): {', '.join(low_vif['Variable'].tolist())}")
                 
-                except Exception as e:
-                    st.error(f"Erro ao calcular VIF: {str(e)}")
-        
-        else:
-            st.warning("Selecione pelo menos 2 vari·veis para an·lise de correlaÁ„o")
+                with col2:
+                    st.dataframe(vif_results, hide_index=True)
+                
+                # Summary and Recommendations
+                st.subheader("5. Resumo e Recomenda√ß√µes")
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("### Estat√≠sticas")
+                    n_vars = len(selected_vars)
+                    n_colinear = len(vif_results[vif_results['VIF'] > vif_threshold])
+                    n_high_corr = len(high_corr)
+                    
+                    st.metric("Total de vari√°veis", n_vars)
+                    st.metric("Vari√°veis colineares (VIF)", n_colinear)
+                    st.metric("Pares com alta correla√ß√£o", n_high_corr)
+                
+                with col2:
+                    st.markdown("### Vari√°veis Recomendadas")
+                    recommended_vars = vif_results[vif_results['VIF'] <= vif_threshold]['Variable'].tolist()
+                    
+                    if recommended_vars:
+                        for var in recommended_vars:
+                            st.write(f"‚úÖ {var}")
+                    else:
+                        st.warning("Todas as vari√°veis apresentam alta colinearidade")
+                
+                # Download results
+                st.subheader("6. Download dos Resultados")
+                
+                results_data = {
+                    'correlation_matrix': correlation_matrix,
+                    'vif_results': vif_results,
+                    'recommended_variables': recommended_vars
+                }
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    csv_corr = correlation_matrix.to_csv(index=True)
+                    st.download_button(
+                        label="Download Matriz de Correla√ß√£o",
+                        data=csv_corr,
+                        file_name="correlation_matrix.csv",
+                        mime="text/csv"
+                    )
+                
+                with col2:
+                    csv_vif = vif_results.to_csv(index=False)
+                    st.download_button(
+                        label="Download An√°lise VIF",
+                        data=csv_vif,
+                        file_name="vif_analysis.csv",
+                        mime="text/csv"
+                    )
+                
+                with col3:
+                    summary_text = f"""
+                    An√°lise de Vari√°veis Ambientais - Resumo
+                    
+                    Total de vari√°veis analisadas: {n_vars}
+                    Vari√°veis com VIF > {vif_threshold}: {n_colinear}
+                    Pares com correla√ß√£o > 0.7: {n_high_corr}
+                    
+                    Vari√°veis recomendadas:
+                    {', '.join(recommended_vars)}
+                    """
+                    
+                    st.download_button(
+                        label="Download Resumo",
+                        data=summary_text,
+                        file_name="analysis_summary.txt",
+                        mime="text/plain"
+                    )
     
     # Information section
-    with st.expander("9 Sobre esta p·gina"):
+    with st.expander("‚Ñπ Sobre esta an√°lise"):
         st.markdown("""
-        ### An·lise de Vari·veis Ambientais
+        ### An√°lise de Vari√°veis Ambientais
         
-        Esta p·gina permite analisar a correlaÁ„o entre vari·veis bioclim·ticas e 
-        identificar problemas de multicolinearidade.
+        Esta p√°gina permite analisar a correla√ß√£o e colinearidade entre vari√°veis 
+        bioclim√°ticas do WorldClim.
         
-        **Funcionalidades:**
-        - SeleÁ„o de 19 vari·veis bioclim·ticas WorldClim
-        - An·lise de correlaÁ„o com matriz e heatmap
-        - C·lculo de VIF (Variance Inflation Factor)
-        - RecomendaÁıes para seleÁ„o de vari·veis
+        **M√©tricas utilizadas:**
         
-        **InterpretaÁ„o do VIF:**
-        - VIF < 5: Baixa multicolinearidade (OK)
-        - VIF 5-10: Multicolinearidade moderada (cautela)
-        - VIF > 10: Alta multicolinearidade (considerar remover)
+        1. **Correla√ß√£o de Pearson**: Mede a rela√ß√£o linear entre duas vari√°veis
+           - Valores pr√≥ximos a 1 ou -1 indicam forte correla√ß√£o
+           - Valores pr√≥ximos a 0 indicam aus√™ncia de correla√ß√£o linear
         
-        **PrÛximos passos:**
-        - IntegraÁ„o com rasters WorldClim reais
-        - ExtraÁ„o autom·tica de valores
-        - An·lise espacial avanÁada
+        2. **VIF (Variance Inflation Factor)**: Detecta multicolinearidade
+           - VIF = 1: Sem correla√ß√£o com outras vari√°veis
+           - VIF > 5: Indica potencial problema de colinearidade
+           - VIF > 10: Forte indica√ß√£o de multicolinearidade
+        
+        **Recomenda√ß√µes:**
+        - Evite usar vari√°veis com alta correla√ß√£o (>0.7) no mesmo modelo
+        - Remova vari√°veis com VIF > 5 para evitar problemas de colinearidade
+        - Mantenha vari√°veis que sejam ecologicamente relevantes para sua an√°lise
         """)
 
 if __name__ == "__main__":

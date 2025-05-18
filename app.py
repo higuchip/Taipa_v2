@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Import page modules
-from pages import pagina_busca_api, pagina_variaveis_ambientais
+from pages import pagina_busca_api, pagina_variaveis_ambientais, pagina_pseudoausencias
 
 # Page configuration
 st.set_page_config(
@@ -46,10 +46,11 @@ page = st.sidebar.radio(
     [
         "Home",
         "1. Busca de Espécies (GBIF)",
-        "2. Variáveis Ambientais",
-        "3. Statistical Analysis",
-        "4. ML Modeling",
-        "5. Outputs"
+        "2. Pseudo-ausências",
+        "3. Variáveis Ambientais",
+        "4. Statistical Analysis",
+        "5. ML Modeling",
+        "6. Outputs"
     ]
 )
 
@@ -66,10 +67,11 @@ if page == "Home":
     ### Platform Modules
     
     1. **Busca de Espécies**: Search and visualize species occurrences from GBIF
-    2. **Variáveis Ambientais**: Analyze bioclimatic variables and their correlations
-    3. **Statistical Analysis Module**: Explore statistical methods for species distribution
-    4. **Machine Learning Modeling Module**: Apply ML algorithms to predict species distribution
-    5. **Outputs Module**: Generate and interpret distribution maps and reports
+    2. **Pseudo-ausências**: Generate pseudo-absence points for SDM
+    3. **Variáveis Ambientais**: Analyze bioclimatic variables and their correlations
+    4. **Statistical Analysis Module**: Explore statistical methods for species distribution
+    5. **Machine Learning Modeling Module**: Apply ML algorithms to predict species distribution
+    6. **Outputs Module**: Generate and interpret distribution maps and reports
     
     ### Getting Started
     
@@ -97,11 +99,14 @@ if page == "Home":
 elif page == "1. Busca de Espécies (GBIF)":
     pagina_busca_api.render_page()
 
-elif page == "2. Variáveis Ambientais":
+elif page == "2. Pseudo-ausências":
+    pagina_pseudoausencias.render_page()
+
+elif page == "3. Variáveis Ambientais":
     pagina_variaveis_ambientais.render_page()
 
-elif page == "3. Statistical Analysis":
-    st.header("Module 3: Statistical Analysis for SDM")
+elif page == "4. Statistical Analysis":
+    st.header("Module 4: Statistical Analysis for SDM")
     st.info("Explore statistical methods used in species distribution modeling")
     st.markdown("""
     ### Topics Covered:
@@ -113,8 +118,8 @@ elif page == "3. Statistical Analysis":
     """)
     st.warning("Module content to be implemented in Phase 2")
 
-elif page == "4. ML Modeling":
-    st.header("Module 4: Machine Learning for Species Distribution")
+elif page == "5. ML Modeling":
+    st.header("Module 5: Machine Learning for Species Distribution")
     st.info("Apply machine learning algorithms to predict species distribution")
     st.markdown("""
     ### Topics Covered:
@@ -126,8 +131,8 @@ elif page == "4. ML Modeling":
     """)
     st.warning("Module content to be implemented in Phase 3")
 
-elif page == "5. Outputs":
-    st.header("Module 5: Generating and Interpreting Outputs")
+elif page == "6. Outputs":
+    st.header("Module 6: Generating and Interpreting Outputs")
     st.info("Create distribution maps and interpret modeling results")
     st.markdown("""
     ### Topics Covered:

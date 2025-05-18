@@ -33,7 +33,7 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     # Create base map
     m = folium.Map(location=center, zoom_start=5)
     
-    # Add occurrence markers
+    # Add occurrence markers as simple blue circles
     for occ in occurrences:
         if occ.get("lat") and occ.get("lon"):
             popup_text = f"""
@@ -45,23 +45,18 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
             Basis: {occ.get('basis_of_record', 'Unknown')}
             """
             
-            folium.Marker(
+            # Use CircleMarker for a simple blue circle
+            folium.CircleMarker(
                 location=[occ["lat"], occ["lon"]],
-                popup=popup_text,
-                tooltip=f"{occ.get('scientific_name', 'Unknown')} - {occ.get('year', 'Unknown')}"
+                radius=5,
+                popup=folium.Popup(popup_text, max_width=300),
+                tooltip=f"{occ.get('scientific_name', 'Unknown')} - {occ.get('year', 'Unknown')}",
+                color='#0000FF',  # Blue border
+                weight=2,
+                fill=True,
+                fillColor='#0000FF',  # Blue fill
+                fillOpacity=0.7
             ).add_to(m)
-    
-    # Add marker cluster for better visualization with many points
-    if len(occurrences) > 50:
-        from folium.plugins import MarkerCluster
-        marker_cluster = MarkerCluster().add_to(m)
-        
-        for occ in occurrences:
-            if occ.get("lat") and occ.get("lon"):
-                folium.Marker(
-                    location=[occ["lat"], occ["lon"]],
-                    popup=f"{occ.get('scientific_name', 'Unknown')} - {occ.get('year', 'Unknown')}"
-                ).add_to(marker_cluster)
     
     return m
 
@@ -142,32 +137,32 @@ def create_heatmap(occurrences: List[Dict]) -> folium.Map:
     
     return m
 
-def get_worldclim_layers() -> List[Dict[str, str]]:
+def get_worldclim_layers() -> Dict[str, str]:
     """
     Get list of WorldClim bioclimatic variables
     
     Returns:
-        List of dictionaries with variable info
+        Dictionary with variable codes as keys and descriptions as values
     """
-    variables = [
-        {"code": "bio1", "name": "Annual Mean Temperature", "unit": "캜"},
-        {"code": "bio2", "name": "Mean Diurnal Range", "unit": "캜"},
-        {"code": "bio3", "name": "Isothermality", "unit": "%"},
-        {"code": "bio4", "name": "Temperature Seasonality", "unit": "CV"},
-        {"code": "bio5", "name": "Max Temperature of Warmest Month", "unit": "캜"},
-        {"code": "bio6", "name": "Min Temperature of Coldest Month", "unit": "캜"},
-        {"code": "bio7", "name": "Temperature Annual Range", "unit": "캜"},
-        {"code": "bio8", "name": "Mean Temperature of Wettest Quarter", "unit": "캜"},
-        {"code": "bio9", "name": "Mean Temperature of Driest Quarter", "unit": "캜"},
-        {"code": "bio10", "name": "Mean Temperature of Warmest Quarter", "unit": "캜"},
-        {"code": "bio11", "name": "Mean Temperature of Coldest Quarter", "unit": "캜"},
-        {"code": "bio12", "name": "Annual Precipitation", "unit": "mm"},
-        {"code": "bio13", "name": "Precipitation of Wettest Month", "unit": "mm"},
-        {"code": "bio14", "name": "Precipitation of Driest Month", "unit": "mm"},
-        {"code": "bio15", "name": "Precipitation Seasonality", "unit": "CV"},
-        {"code": "bio16", "name": "Precipitation of Wettest Quarter", "unit": "mm"},
-        {"code": "bio17", "name": "Precipitation of Driest Quarter", "unit": "mm"},
-        {"code": "bio18", "name": "Precipitation of Warmest Quarter", "unit": "mm"},
-        {"code": "bio19", "name": "Precipitation of Coldest Quarter", "unit": "mm"}
-    ]
+    variables = {
+        "bio1": "Annual Mean Temperature (째C)",
+        "bio2": "Mean Diurnal Range (째C)",
+        "bio3": "Isothermality (%)",
+        "bio4": "Temperature Seasonality (CV)",
+        "bio5": "Max Temperature of Warmest Month (째C)",
+        "bio6": "Min Temperature of Coldest Month (째C)",
+        "bio7": "Temperature Annual Range (째C)",
+        "bio8": "Mean Temperature of Wettest Quarter (째C)",
+        "bio9": "Mean Temperature of Driest Quarter (째C)",
+        "bio10": "Mean Temperature of Warmest Quarter (째C)",
+        "bio11": "Mean Temperature of Coldest Quarter (째C)",
+        "bio12": "Annual Precipitation (mm)",
+        "bio13": "Precipitation of Wettest Month (mm)",
+        "bio14": "Precipitation of Driest Month (mm)",
+        "bio15": "Precipitation Seasonality (CV)",
+        "bio16": "Precipitation of Wettest Quarter (mm)",
+        "bio17": "Precipitation of Driest Quarter (mm)",
+        "bio18": "Precipitation of Warmest Quarter (mm)",
+        "bio19": "Precipitation of Coldest Quarter (mm)"
+    }
     return variables

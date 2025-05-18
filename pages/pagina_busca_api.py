@@ -5,27 +5,20 @@ from utils.geo_utils import create_occurrence_map, create_heatmap
 from streamlit_folium import st_folium
 
 def render_page():
-    st.title("Busca de Espécies - GBIF")
-    st.markdown("Pesquise ocorrências de espécies na base de dados do GBIF")
+    st.title("Busca de EspÃ©cies - GBIF")
+    st.markdown("Pesquise ocorrÃªncias de espÃ©cies no Brasil na base de dados do GBIF")
     
     # Search form
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([3, 1])
     
     with col1:
         species_name = st.text_input(
-            "Nome científico da espécie",
-            placeholder="Ex: Panthera onca",
-            help="Digite o nome científico da espécie"
+            "Nome cientÃ­fico da espÃ©cie",
+            placeholder="Ex: Araucaria angustifolia",
+            help="Digite o nome cientÃ­fico da espÃ©cie"
         )
     
     with col2:
-        countries = get_countries()
-        country_options = ["Todos"] + [f"{c['name']} ({c['code']})" for c in countries]
-        selected_country = st.selectbox("País", country_options)
-    
-    col3, col4 = st.columns([1, 1])
-    
-    with col3:
         limit = st.number_input(
             "Limite de resultados",
             min_value=10,
@@ -34,24 +27,18 @@ def render_page():
             step=10
         )
     
-    with col4:
-        map_type = st.radio(
-            "Tipo de visualização",
-            ["Pontos", "Mapa de calor"],
-            horizontal=True
-        )
+    map_type = st.radio(
+        "Tipo de visualizaÃ§Ã£o",
+        ["Pontos", "Mapa de calor"],
+        horizontal=True
+    )
     
     # Search button
     if st.button("Buscar", type="primary", use_container_width=True):
         if species_name:
-            with st.spinner("Buscando ocorrências..."):
-                # Get country code if selected
-                country_code = None
-                if selected_country != "Todos":
-                    for country in countries:
-                        if country['name'] in selected_country:
-                            country_code = country['code']
-                            break
+            with st.spinner("Buscando ocorrÃªncias no Brasil..."):
+                # Always search in Brazil (country code: BR)
+                country_code = "BR"
                 
                 # Search species
                 results = search_species(species_name, country_code, limit)
@@ -60,10 +47,15 @@ def render_page():
                     st.error(f"Erro na busca: {results['error']}")
                 elif results.get("results"):
                     occurrences = results["results"]
-                    st.success(f"Encontradas {len(occurrences)} ocorrências")
+                    st.success(f"Encontradas {len(occurrences)} ocorrÃªncias no Brasil")
                     
                     # Format data for map
                     map_data = [format_occurrence_for_map(occ) for occ in occurrences]
+                    
+                    # Store in session state for other modules
+                    st.session_state['occurrence_data'] = map_data
+                    st.session_state['n_occurrences'] = len(map_data)
+                    st.session_state['species_name'] = species_name
                     
                     # Create and display map
                     if map_type == "Pontos":
@@ -74,17 +66,16 @@ def render_page():
                     st_folium(m, width=700, height=500, returned_objects=["all_draws"])
                     
                     # Display data table
-                    with st.expander("Dados das ocorrências", expanded=False):
+                    with st.expander("Dados das ocorrÃªncias", expanded=False):
                         df_data = []
                         for occ in map_data:
                             df_data.append({
-                                "Nome Científico": occ.get("scientific_name"),
-                                "País": occ.get("country"),
+                                "Nome CientÃ­fico": occ.get("scientific_name"),
                                 "Estado": occ.get("state"),
                                 "Ano": occ.get("year"),
                                 "Latitude": occ.get("lat"),
                                 "Longitude": occ.get("lon"),
-                                "Instituição": occ.get("institution"),
+                                "InstituiÃ§Ã£o": occ.get("institution"),
                                 "Base": occ.get("basis_of_record")
                             })
                         
@@ -96,35 +87,34 @@ def render_page():
                         st.download_button(
                             label="Download CSV",
                             data=csv,
-                            file_name=f"{species_name.replace(' ', '_')}_occurrences.csv",
+                            file_name=f"{species_name.replace(' ', '_')}_occurrences_BR.csv",
                             mime="text/csv"
                         )
                 else:
-                    st.warning("Nenhuma ocorrência encontrada")
+                    st.warning("Nenhuma ocorrÃªncia encontrada no Brasil")
         else:
-            st.warning("Por favor, insira o nome científico da espécie")
+            st.warning("Por favor, insira o nome cientÃ­fico da espÃ©cie")
     
     # Information section
-    with st.expander("9 Sobre esta página"):
+    with st.expander("â„¹ Sobre esta pÃ¡gina"):
         st.markdown("""
-        ### Busca de Espécies no GBIF
+        ### Busca de EspÃ©cies no Brasil - GBIF
         
-        Esta página permite buscar ocorrências de espécies na base de dados do GBIF 
+        Esta pÃ¡gina permite buscar ocorrÃªncias de espÃ©cies no Brasil na base de dados do GBIF 
         (Global Biodiversity Information Facility).
         
         **Como usar:**
-        1. Digite o nome científico da espécie
-        2. Opcionalmente, selecione um país para filtrar
-        3. Escolha o limite de resultados
-        4. Selecione o tipo de visualização (pontos ou mapa de calor)
-        5. Clique em "Buscar"
+        1. Digite o nome cientÃ­fico da espÃ©cie
+        2. Escolha o limite de resultados
+        3. Selecione o tipo de visualizaÃ§Ã£o (pontos ou mapa de calor)
+        4. Clique em "Buscar"
         
         **Recursos:**
-        - Visualização em mapa interativo
+        - Busca automÃ¡tica restrita ao Brasil
+        - VisualizaÃ§Ã£o em mapa interativo
         - Tabela com dados detalhados
         - Download dos resultados em CSV
-        - Filtro por país
-        - Dois tipos de visualização
+        - Dois tipos de visualizaÃ§Ã£o
         """)
 
 if __name__ == "__main__":
