@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Import page modules
-from pages import pagina_busca_api, pagina_variaveis_ambientais, pagina_pseudoausencias
+from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica
 
 # Page configuration
 st.set_page_config(
@@ -47,7 +47,7 @@ page = st.sidebar.radio(
         "Home",
         "1. Busca de Espécies (GBIF)",
         "2. Pseudo-ausências",
-        "3. Variáveis Ambientais",
+        "3. Análise Bioclimática",
         "4. Statistical Analysis",
         "5. ML Modeling",
         "6. Outputs"
@@ -68,7 +68,7 @@ if page == "Home":
     
     1. **Busca de Espécies**: Search and visualize species occurrences from GBIF
     2. **Pseudo-ausências**: Generate pseudo-absence points for SDM
-    3. **Variáveis Ambientais**: Analyze bioclimatic variables and their correlations
+    3. **Análise Bioclimática**: Analyze bioclimatic variables and their correlations
     4. **Statistical Analysis Module**: Explore statistical methods for species distribution
     5. **Machine Learning Modeling Module**: Apply ML algorithms to predict species distribution
     6. **Outputs Module**: Generate and interpret distribution maps and reports
@@ -102,8 +102,8 @@ elif page == "1. Busca de Espécies (GBIF)":
 elif page == "2. Pseudo-ausências":
     pagina_pseudoausencias.render_page()
 
-elif page == "3. Variáveis Ambientais":
-    pagina_variaveis_ambientais.render_page()
+elif page == "3. Análise Bioclimática":
+    pagina_analise_bioclimatica.render_page()
 
 elif page == "4. Statistical Analysis":
     st.header("Module 4: Statistical Analysis for SDM")
@@ -131,8 +131,8 @@ elif page == "5. ML Modeling":
     """)
     st.warning("Module content to be implemented in Phase 3")
 
-elif page == "6. Outputs":
-    st.header("Module 6: Generating and Interpreting Outputs")
+elif page == "7. Outputs":
+    st.header("Module 7: Generating and Interpreting Outputs")
     st.info("Create distribution maps and interpret modeling results")
     st.markdown("""
     ### Topics Covered:
