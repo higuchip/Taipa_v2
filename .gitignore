@@ -33,4 +33,5 @@ data/
 output/
 temp/
 temp_worldclim/
+conversation_summary.md
 .streamlit/secrets.toml
