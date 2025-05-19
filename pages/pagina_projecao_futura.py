@@ -19,22 +19,22 @@ def render_page():
     st.title("🌡️ Projeção Futura - Mudanças Climáticas")
     st.markdown("Analise como as mudanças climáticas podem afetar a distribuição da espécie")
     
-    # Display species info
+    # Exibir informações da espécie
     if 'species_name' in st.session_state:
         st.info(f"🌿 Espécie: **{st.session_state['species_name']}**")
     else:
         st.warning("⚠️ Nenhuma espécie selecionada. Por favor, comece pela busca de espécies.")
         return
     
-    # Check if model is trained
+    # Verificar se o modelo está treinado
     if not st.session_state.get('model_trained'):
         st.warning("⚠️ Treine um modelo na aba de Modelagem primeiro.")
         return
     
-    model = st.session_state['trained_model']
-    selected_vars = st.session_state['selected_vars']
+    modelo = st.session_state['trained_model']
+    variaveis_selecionadas = st.session_state['selected_vars']
     
-    # Configuration sidebar
+    # Barra lateral de configuração
     with st.sidebar:
         st.header("⚙️ Configurações de Projeção Futura")
         
@@ -58,30 +58,30 @@ def render_page():
         Em aplicações científicas reais, sempre use múltiplos GCMs.
         """)
         
-        # Scenario selection
-        scenario = st.selectbox(
+        # Seleção de cenário
+        cenario = st.selectbox(
             "Cenário climático",
             ["SSP1-2.6 (Otimista)", "SSP5-8.5 (Pessimista)"],
             help="SSP1-2.6: Desenvolvimento sustentável com forte mitigação\nSSP5-8.5: Uso intensivo de combustíveis fósseis"
         )
         
-        # Period selection - now fixed to 2081-2100
-        period = "2081-2100 (Futuro distante)"
+        # Seleção de período - agora fixado em 2081-2100
+        periodo = "2081-2100 (Futuro distante)"
         st.info("📅 Período fixado em 2081-2100 para análise de impactos de longo prazo")
         
-        # Display options
+        # Opções de exibição
         st.subheader("Opções de Visualização")
         
-        # Threshold selection
+        # Seleção de threshold
         st.subheader("Threshold para Mapa Binário")
-        threshold_method = st.selectbox(
+        metodo_threshold = st.selectbox(
             "Método de threshold",
             ["Manual", "Usar do mapa atual", "Média das Predições", "Percentil 50", "Percentil 10"]
         )
         
-        if threshold_method == "Manual":
+        if metodo_threshold == "Manual":
             threshold = st.slider("Threshold manual", 0.0, 1.0, 0.5, step=0.01)
-        elif threshold_method == "Usar do mapa atual":
+        elif metodo_threshold == "Usar do mapa atual":
             if 'projection_threshold' in st.session_state:
                 threshold = st.session_state['projection_threshold']
                 st.info(f"Usando threshold do mapa atual: {threshold:.3f}")
@@ -89,20 +89,20 @@ def render_page():
                 threshold = 0.5
                 st.warning("Threshold do mapa atual não encontrado. Usando 0.5")
         else:
-            threshold = None  # Will be calculated based on data
+            threshold = None  # Será calculado com base nos dados
         
     
-    # Extract scenario and period codes
-    scenario_code = "ssp126" if "SSP1-2.6" in scenario else "ssp585"
-    period_code = "2081-2100"  # Fixed period
+    # Extrair códigos de cenário e período
+    codigo_cenario = "ssp126" if "SSP1-2.6" in cenario else "ssp585"
+    codigo_periodo = "2081-2100"  # Período fixo
     
-    # Main content
+    # Conteúdo principal
     col1, col2 = st.columns([3, 1])
     
     with col1:
         st.header("Projeção de Distribuição Futura")
         
-        # Use session state to maintain the state
+        # Usar o estado da sessão para manter o estado
         if 'future_projection_done' not in st.session_state:
             st.session_state.future_projection_done = False
         
@@ -112,28 +112,28 @@ def render_page():
         if st.session_state.future_projection_done:
             with st.spinner("Preparando dados climáticos futuros..."):
                 try:
-                    # Future climate data path
-                    future_climate_path = Path(f"data/worldclim_future/{scenario_code}_{period_code}")
+                    # Caminho dos dados climáticos futuros
+                    caminho_clima_futuro = Path(f"data/worldclim_future/{codigo_cenario}_{codigo_periodo}")
                     
-                    # Check if future data exists
-                    if not future_climate_path.exists():
-                        st.error(f"Dados climáticos futuros não encontrados em: {future_climate_path}")
+                    # Verificar se os dados futuros existem
+                    if not caminho_clima_futuro.exists():
+                        st.error(f"Dados climáticos futuros não encontrados em: {caminho_clima_futuro}")
                         st.info("💡 Execute o script de download de dados futuros primeiro.")
                         return
                     
-                    # Load current prediction for comparison
-                    current_prediction = st.session_state.get('last_prediction')
-                    if current_prediction is None:
+                    # Carregar previsão atual para comparação
+                    previsao_atual = st.session_state.get('last_prediction')
+                    if previsao_atual is None:
                         st.warning("Execute uma projeção espacial atual primeiro para comparação.")
                         return
                     
-                    # Load future climate data
+                    # Carregar dados climáticos futuros
                     st.info("Carregando dados climáticos futuros e aplicando máscara do Brasil...")
                     
-                    # Get Brazil boundary as GeoDataFrame
-                    brazil_gdf = get_brazil_gdf()
-                    if brazil_gdf.crs != 'EPSG:4326':
-                        brazil_gdf = brazil_gdf.to_crs('EPSG:4326')
+                    # Obter fronteira do Brasil como GeoDataFrame
+                    brasil_gdf = get_brazil_gdf()
+                    if brasil_gdf.crs != 'EPSG:4326':
+                        brasil_gdf = brasil_gdf.to_crs('EPSG:4326')
                     
                     # Get spatial reference from first file
                     first_var = selected_vars[0]
@@ -247,23 +247,23 @@ def render_page():
                     with tabs[0]:
                         st.subheader("Comparação Visual: Presente vs Futuro")
                         
-                        # Get Brazil boundary for plotting
-                        brazil_geom_plot = brazil_gdf.geometry[0]
+                        # Obter fronteira do Brasil para plotagem
+                        geometria_brasil_plot = brasil_gdf.geometry[0]
                         
-                        # Extract coordinates for plotting Brazil boundary
-                        if brazil_geom_plot.geom_type == 'MultiPolygon':
-                            # For MultiPolygon, we need to handle multiple parts
-                            brazil_x = []
-                            brazil_y = []
-                            for polygon in brazil_geom_plot.geoms:
-                                x, y = polygon.exterior.coords.xy
-                                brazil_x.extend(list(x) + [None])  # Add None to create breaks between polygons
-                                brazil_y.extend(list(y) + [None])
+                        # Extrair coordenadas para plotar fronteira do Brasil
+                        if geometria_brasil_plot.geom_type == 'MultiPolygon':
+                            # Para MultiPolygon, precisamos lidar com múltiplas partes
+                            brasil_x = []
+                            brasil_y = []
+                            for poligono in geometria_brasil_plot.geoms:
+                                x, y = poligono.exterior.coords.xy
+                                brasil_x.extend(list(x) + [None])  # Adicionar None para criar quebras entre polígonos
+                                brasil_y.extend(list(y) + [None])
                         else:
-                            # For single Polygon
-                            brazil_x, brazil_y = brazil_geom_plot.exterior.coords.xy
+                            # Para Polígono único
+                            brasil_x, brasil_y = geometria_brasil_plot.exterior.coords.xy
                         
-                        # Section 1: Binary maps comparison
+                        # Seção 1: Comparação de mapas binários
                         st.markdown("#### 1. Mapas Binários (Presença/Ausência)")
                         col1, col2 = st.columns(2)
                         

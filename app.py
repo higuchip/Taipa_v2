@@ -42,14 +42,14 @@ st.markdown("""
 
 # Header
 st.markdown('<h1 class="main-header">🌿 TAIPA SDM</h1>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Species Distribution Modeling Educational Platform</p>', unsafe_allow_html=True)
+st.markdown('<p class="sub-header">Plataforma Educacional de Modelagem de Distribuição de Espécies</p>', unsafe_allow_html=True)
 
-# Sidebar navigation
-st.sidebar.title("Navigation")
-page = st.sidebar.radio(
-    "Select Module",
+# Navegação na barra lateral
+st.sidebar.title("Navegação")
+pagina = st.sidebar.radio(
+    "Selecione o Módulo",
     [
-        "Home",
+        "Início",
         "1. Busca de Espécies (GBIF)",
         "2. Pseudo-ausências",
         "3. Análise Bioclimática",
@@ -59,108 +59,108 @@ page = st.sidebar.radio(
     ]
 )
 
-# Page content routing
-if page == "Home":
-    st.header("Welcome to TAIPA SDM Platform")
+# Roteamento do conteúdo da página
+if pagina == "Início":
+    st.header("Bem-vindo à Plataforma TAIPA SDM")
     
-    # Overview
+    # Visão geral
     st.markdown("""
-    ### About TAIPA
-    TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) is an educational platform for Species Distribution Modeling (SDM). 
-    This tool guides users through the complete workflow of creating distribution models for any species.
+    ### Sobre o TAIPA
+    TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) é uma plataforma educacional para Modelagem de Distribuição de Espécies (SDM). 
+    Esta ferramenta guia os usuários através do fluxo completo de criação de modelos de distribuição para qualquer espécie.
     
-    ### 🚀 Workflow Overview
+    ### 🚀 Visão Geral do Fluxo de Trabalho
     """)
     
-    # Workflow steps
+    # Etapas do fluxo de trabalho
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        **1. Species Data Collection**
-        - Search for species occurrences using GBIF
-        - Visualize distribution points on interactive maps
-        - Filter and clean occurrence data
+        **1. Coleta de Dados de Espécies**
+        - Buscar ocorrências de espécies usando GBIF
+        - Visualizar pontos de distribuição em mapas interativos
+        - Filtrar e limpar dados de ocorrência
         
-        **2. Pseudo-absence Generation**
-        - Generate background points using buffer strategy
-        - Control sampling density and exclusion zones
-        - Balance presence/absence data
+        **2. Geração de Pseudo-ausências**
+        - Gerar pontos de background usando estratégia de buffer
+        - Controlar densidade de amostragem e zonas de exclusão
+        - Balancear dados de presença/ausência
         """)
     
     with col2:
         st.markdown("""
-        **3. Bioclimatic Analysis**
-        - Extract environmental variables from WorldClim
-        - Analyze variable correlations and VIF
-        - Select optimal variables for modeling
+        **3. Análise Bioclimática**
+        - Extrair variáveis ambientais do WorldClim
+        - Analisar correlações e VIF das variáveis
+        - Selecionar variáveis ótimas para modelagem
         
-        **4. Model Training & Evaluation**
-        - Train Random Forest models
-        - Cross-validation and performance metrics
-        - Save and load models for future use
+        **4. Treinamento e Avaliação do Modelo**
+        - Treinar modelos Random Forest
+        - Validação cruzada e métricas de desempenho
+        - Salvar e carregar modelos para uso futuro
         
-        **5. Spatial Projection**
-        - Generate habitat suitability maps
-        - Apply optimal thresholds
-        - Export results as GeoTIFF
+        **5. Projeção Espacial**
+        - Gerar mapas de adequabilidade de habitat
+        - Aplicar thresholds ótimos
+        - Exportar resultados como GeoTIFF
         
-        **6. Future Projection**
-        - Climate change impact analysis
-        - SSP1-2.6 vs SSP5-8.5 scenarios
-        - 2081-2100 projections
-        - Change and stability maps
-        - *Note: Single GCM for didactic purposes*
+        **6. Projeção Futura**
+        - Análise de impacto das mudanças climáticas
+        - Cenários SSP1-2.6 vs SSP5-8.5
+        - Projeções 2081-2100
+        - Mapas de mudança e estabilidade
+        - *Nota: GCM único para fins didáticos*
         """)
     
-    # Quick stats
+    # Estatísticas rápidas
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Modules", "6")
+        st.metric("Total de Módulos", "6")
     with col2:
-        st.metric("SDM Workflow", "Complete")
+        st.metric("Fluxo SDM", "Completo")
     with col3:
-        st.metric("Platform Status", "Active")
+        st.metric("Status da Plataforma", "Ativa")
     
-    # Getting started
+    # Começando
     st.markdown("---")
-    st.subheader("🎯 Getting Started")
+    st.subheader("🎯 Como Começar")
     st.info("""
-    1. Begin with **Module 1** to search for species occurrence data
-    2. Follow the workflow sequentially through each module
-    3. Use the sidebar to navigate between modules
-    4. All data is automatically passed between modules
+    1. Comece com o **Módulo 1** para buscar dados de ocorrência de espécies
+    2. Siga o fluxo de trabalho sequencialmente através de cada módulo
+    3. Use a barra lateral para navegar entre os módulos
+    4. Todos os dados são automaticamente transferidos entre módulos
     """)
     
-    # Features
-    st.subheader("✨ Key Features")
-    features = {
-        "🌍 GBIF Integration": "Access global biodiversity data",
-        "🗺️ Interactive Maps": "Visualize and filter occurrence points",
-        "🌡️ Environmental Variables": "19 WorldClim bioclimatic layers",
-        "🤖 Machine Learning": "Random Forest with cross-validation",
-        "📊 Model Evaluation": "Comprehensive performance metrics",
-        "💾 Model Persistence": "Save and load trained models",
-        "🌡️ Climate Projections": "Future scenarios (SSP1-2.6, SSP5-8.5)"
+    # Recursos
+    st.subheader("✨ Principais Recursos")
+    recursos = {
+        "🌍 Integração GBIF": "Acesso a dados globais de biodiversidade",
+        "🗺️ Mapas Interativos": "Visualizar e filtrar pontos de ocorrência",
+        "🌡️ Variáveis Ambientais": "19 camadas bioclimáticas WorldClim",
+        "🤖 Machine Learning": "Random Forest com validação cruzada",
+        "📊 Avaliação do Modelo": "Métricas abrangentes de desempenho",
+        "💾 Persistência do Modelo": "Salvar e carregar modelos treinados",
+        "🌡️ Projeções Climáticas": "Cenários futuros (SSP1-2.6, SSP5-8.5)"
     }
     
-    for icon_title, description in features.items():
-        st.markdown(f"**{icon_title}**: {description}")
+    for titulo_icone, descricao in recursos.items():
+        st.markdown(f"**{titulo_icone}**: {descricao}")
 
-elif page == "1. Busca de Espécies (GBIF)":
+elif pagina == "1. Busca de Espécies (GBIF)":
     pagina_busca_api()
 
-elif page == "2. Pseudo-ausências":
+elif pagina == "2. Pseudo-ausências":
     pagina_pseudoausencias()
 
-elif page == "3. Análise Bioclimática":
+elif pagina == "3. Análise Bioclimática":
     pagina_analise_bioclimatica()
 
-elif page == "4. Modelagem e Resultados":
+elif pagina == "4. Modelagem e Resultados":
     pagina_modelagem()
 
-elif page == "5. Projeção Espacial":
+elif pagina == "5. Projeção Espacial":
     pagina_projecao_espacial()
 
-elif page == "6. Projeção Futura":
+elif pagina == "6. Projeção Futura":
     pagina_projecao_futura()
