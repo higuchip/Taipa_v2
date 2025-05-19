@@ -8,6 +8,9 @@ from pathlib import Path
 import tempfile
 import os
 from datetime import datetime
+import geopandas as gpd
+from rasterio.mask import mask
+from utils.brazil_boundary import get_brazil_boundary, get_brazil_gdf
 
 def render_page():
     st.title("🌡️ Projeção Futura - Mudanças Climáticas")
@@ -118,7 +121,12 @@ def render_page():
                         return
                     
                     # Load future climate data
-                    st.info("Carregando dados climáticos futuros...")
+                    st.info("Carregando dados climáticos futuros e aplicando máscara do Brasil...")
+                    
+                    # Get Brazil boundary as GeoDataFrame
+                    brazil_gdf = get_brazil_gdf()
+                    if brazil_gdf.crs != 'EPSG:4326':
+                        brazil_gdf = brazil_gdf.to_crs('EPSG:4326')
                     
                     # Get spatial reference from first file
                     first_var = selected_vars[0]
@@ -129,18 +137,39 @@ def render_page():
                         st.error(f"Arquivo de referência não encontrado: {ref_file}")
                         return
                     
+                    # Process Brazil boundary for masking
                     with rasterio.open(ref_file) as src:
+                        # Reproject Brazil boundary to match raster CRS if needed
+                        if brazil_gdf.crs != src.crs:
+                            brazil_gdf_proj = brazil_gdf.to_crs(src.crs)
+                        else:
+                            brazil_gdf_proj = brazil_gdf
+                        
+                        # Get the geometry for masking
+                        brazil_geom = [brazil_gdf_proj.geometry[0]]
+                        
+                        # Get masked bounds and transform for Brazil
+                        out_image, out_transform = mask(src, brazil_geom, crop=True)
+                        out_meta = src.meta.copy()
+                        out_meta.update({
+                            "driver": "GTiff",
+                            "height": out_image.shape[1],
+                            "width": out_image.shape[2],
+                            "transform": out_transform
+                        })
+                        
+                        # Use Brazil-cropped dimensions
+                        height = out_meta['height']
+                        width = out_meta['width']
+                        transform = out_transform
                         crs = src.crs
-                        transform = src.transform
-                        height = src.height
-                        width = src.width
-                        bounds = src.bounds
+                        bounds = rasterio.transform.array_bounds(height, width, transform)
                     
                     # Create arrays for future climate data
                     n_vars = len(selected_vars)
                     bio_data_future = np.zeros((n_vars, height, width))
                     
-                    # Load selected bioclimatic variables
+                    # Load selected bioclimatic variables with Brazil mask
                     progress_bar = st.progress(0)
                     for i, var in enumerate(selected_vars):
                         var_num = int(var.replace('bio', ''))
@@ -151,12 +180,14 @@ def render_page():
                             continue
                         
                         with rasterio.open(tif_path) as src:
-                            data = src.read(1)
+                            # Apply Brazil mask to the data
+                            masked_data, _ = mask(src, brazil_geom, crop=True)
+                            data = masked_data[0]  # Get first band
                             
                             # Apply temperature conversion if needed
                             if var_num in [1,2,3,4,5,6,7,8,9,10,11]:
-                                mask = data != -9999
-                                data[mask] = data[mask] / 10.0
+                                valid_mask = data != src.nodata
+                                data[valid_mask] = data[valid_mask] / 10.0
                             
                             bio_data_future[i] = data
                         
@@ -209,39 +240,89 @@ def render_page():
                     with tabs[0]:
                         st.subheader("Comparação: Presente vs Futuro")
                         
+                        # Get Brazil boundary for plotting
+                        brazil_geom_plot = brazil_gdf.geometry[0]
+                        
+                        # Extract coordinates for plotting Brazil boundary
+                        if brazil_geom_plot.geom_type == 'MultiPolygon':
+                            # For MultiPolygon, we need to handle multiple parts
+                            brazil_x = []
+                            brazil_y = []
+                            for polygon in brazil_geom_plot.geoms:
+                                x, y = polygon.exterior.coords.xy
+                                brazil_x.extend(list(x) + [None])  # Add None to create breaks between polygons
+                                brazil_y.extend(list(y) + [None])
+                        else:
+                            # For single Polygon
+                            brazil_x, brazil_y = brazil_geom_plot.exterior.coords.xy
+                        
                         # Binary maps comparison
                         st.markdown("### Mapas Binários (Presença/Ausência)")
                         col1, col2 = st.columns(2)
                         
                         with col1:
                             st.markdown("#### Distribuição Atual")
-                            fig_current_binary = go.Figure(data=go.Heatmap(
+                            fig_current_binary = go.Figure()
+                            
+                            # Add heatmap
+                            fig_current_binary.add_trace(go.Heatmap(
                                 z=binary_map_current[::-1],
                                 colorscale=[[0, 'white'], [1, 'darkgreen']],
                                 showscale=True,
-                                colorbar=dict(title="Presença", tickvals=[0, 1], ticktext=['Ausente', 'Presente'])
+                                colorbar=dict(title="Presença", tickvals=[0, 1], ticktext=['Ausente', 'Presente']),
+                                x=np.linspace(bounds[0], bounds[2], width),  # west to east
+                                y=np.linspace(bounds[1], bounds[3], height)  # south to north
                             ))
+                            
+                            # Add Brazil boundary
+                            fig_current_binary.add_trace(go.Scattergl(
+                                x=brazil_x,
+                                y=brazil_y,
+                                mode='lines',
+                                line=dict(color='black', width=2),
+                                showlegend=False,
+                                hoverinfo='skip'
+                            ))
+                            
                             fig_current_binary.update_layout(
                                 title=f"Presente (threshold: {st.session_state.get('projection_threshold', threshold):.3f})",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
-                                height=400
+                                height=400,
+                                xaxis=dict(scaleanchor='y', scaleratio=1)
                             )
                             st.plotly_chart(fig_current_binary, use_container_width=True)
                         
                         with col2:
                             st.markdown(f"#### Distribuição Futura ({period_code})")
-                            fig_future_binary = go.Figure(data=go.Heatmap(
+                            fig_future_binary = go.Figure()
+                            
+                            # Add heatmap
+                            fig_future_binary.add_trace(go.Heatmap(
                                 z=binary_map_future[::-1],
                                 colorscale=[[0, 'white'], [1, 'darkgreen']],
                                 showscale=True,
-                                colorbar=dict(title="Presença", tickvals=[0, 1], ticktext=['Ausente', 'Presente'])
+                                colorbar=dict(title="Presença", tickvals=[0, 1], ticktext=['Ausente', 'Presente']),
+                                x=np.linspace(bounds[0], bounds[2], width),  # west to east
+                                y=np.linspace(bounds[1], bounds[3], height)  # south to north
                             ))
+                            
+                            # Add Brazil boundary
+                            fig_future_binary.add_trace(go.Scattergl(
+                                x=brazil_x,
+                                y=brazil_y,
+                                mode='lines',
+                                line=dict(color='black', width=2),
+                                showlegend=False,
+                                hoverinfo='skip'
+                            ))
+                            
                             fig_future_binary.update_layout(
                                 title=f"{scenario} - {period} (threshold: {threshold:.3f})",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
-                                height=400
+                                height=400,
+                                xaxis=dict(scaleanchor='y', scaleratio=1)
                             )
                             st.plotly_chart(fig_future_binary, use_container_width=True)
                         
@@ -264,6 +345,15 @@ def render_page():
                                     yaxis_title="Latitude",
                                     height=400
                                 )
+                                # Add Brazil boundary
+                                fig_current_prob.add_trace(go.Scattergl(
+                                    x=brazil_x,
+                                    y=brazil_y,
+                                    mode='lines',
+                                    line=dict(color='black', width=2),
+                                    showlegend=False,
+                                    hoverinfo='skip'
+                                ))
                                 st.plotly_chart(fig_current_prob, use_container_width=True)
                             
                             with col2:
@@ -280,6 +370,15 @@ def render_page():
                                     yaxis_title="Latitude",
                                     height=400
                                 )
+                                # Add Brazil boundary
+                                fig_future_prob.add_trace(go.Scattergl(
+                                    x=brazil_x,
+                                    y=brazil_y,
+                                    mode='lines',
+                                    line=dict(color='black', width=2),
+                                    showlegend=False,
+                                    hoverinfo='skip'
+                                ))
                                 st.plotly_chart(fig_future_prob, use_container_width=True)
                     
                     with tabs[1]:
@@ -317,6 +416,15 @@ def render_page():
                                 yaxis_title="Latitude",
                                 height=500
                             )
+                            # Add Brazil boundary
+                            fig_change.add_trace(go.Scattergl(
+                                x=brazil_x,
+                                y=brazil_y,
+                                mode='lines',
+                                line=dict(color='black', width=2),
+                                showlegend=False,
+                                hoverinfo='skip'
+                            ))
                             st.plotly_chart(fig_change, use_container_width=True)
                             
                             st.info("""
@@ -449,7 +557,8 @@ def render_page():
                                     count=1,
                                     dtype=binary_map_future.dtype,
                                     crs=crs,
-                                    transform=transform
+                                    transform=transform,
+                                    nodata=-9999
                                 ) as dst:
                                     dst.write(binary_map_future, 1)
                                 
@@ -468,7 +577,8 @@ def render_page():
                                     count=1,
                                     dtype=prediction_map_future.dtype,
                                     crs=crs,
-                                    transform=transform
+                                    transform=transform,
+                                    nodata=np.nan
                                 ) as dst:
                                     dst.write(prediction_map_future, 1)
                                 
@@ -488,7 +598,8 @@ def render_page():
                                     count=1,
                                     dtype=change_map.dtype,
                                     crs=crs,
-                                    transform=transform
+                                    transform=transform,
+                                    nodata=np.nan
                                 ) as dst:
                                     dst.write(change_map, 1)
                                 
