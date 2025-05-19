@@ -100,13 +100,6 @@ st.sidebar.markdown("### 📊 Seu Progresso")
 st.sidebar.progress(progresso)
 st.sidebar.caption(f"{completas} de {total} etapas concluídas")
 
-# Debug - Mostrar estado atual (apenas em desenvolvimento)
-with st.sidebar.expander("🔧 Debug - Estado Atual"):
-    st.write("Espécie:", st.session_state.get('species_name', 'Não definida'))
-    st.write("Ocorrências:", st.session_state.get('n_occurrences', 0))
-    st.write("Pseudo-ausências:", 'Sim' if 'pseudo_absences' in st.session_state else 'Não')
-    st.write("Modelo treinado:", st.session_state.get('model_trained', False))
-
 # Mostrar checkmarks para etapas completas
 st.sidebar.markdown("### ✅ Etapas Completas")
 etapas_nomes = {
