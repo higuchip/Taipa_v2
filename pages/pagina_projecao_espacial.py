@@ -55,8 +55,8 @@ def render_page():
         )
         
         if threshold_method == "Manual":
-            # Adjust the default based on the actual prediction range
-            threshold = st.slider("Threshold manual", 0.0, 1.0, 0.25)
+            # Default threshold set to 0.5 for binary classification
+            threshold = st.slider("Threshold manual", 0.0, 1.0, 0.5)
         else:
             threshold = None
     
