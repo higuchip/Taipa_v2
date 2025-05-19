@@ -91,9 +91,6 @@ def render_page():
         else:
             threshold = None  # Will be calculated based on data
         
-        show_probability_maps = st.checkbox("Mostrar mapas de probabilidade", value=False)
-        show_change_map = st.checkbox("Mostrar mapa de mudanças", value=True)
-        show_metrics = st.checkbox("Mostrar métricas de mudança", value=True)
     
     # Extract scenario and period codes
     scenario_code = "ssp126" if "SSP1-2.6" in scenario else "ssp585"
@@ -245,10 +242,10 @@ def render_page():
                         return
                     
                     # Create visualizations
-                    tabs = st.tabs(["Comparação", "Mudanças", "Métricas", "Exportar"])
+                    tabs = st.tabs(["Comparação Visual", "Análise de Mudanças", "Métricas Detalhadas", "Exportar Mapas"])
                     
                     with tabs[0]:
-                        st.subheader("Comparação: Presente vs Futuro")
+                        st.subheader("Comparação Visual: Presente vs Futuro")
                         
                         # Get Brazil boundary for plotting
                         brazil_geom_plot = brazil_gdf.geometry[0]
@@ -266,12 +263,12 @@ def render_page():
                             # For single Polygon
                             brazil_x, brazil_y = brazil_geom_plot.exterior.coords.xy
                         
-                        # Binary maps comparison
-                        st.markdown("### Mapas Binários (Presença/Ausência)")
+                        # Section 1: Binary maps comparison
+                        st.markdown("#### 1. Mapas Binários (Presença/Ausência)")
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.markdown("#### Distribuição Atual")
+                            st.markdown("##### Distribuição Atual")
                             fig_current_binary = go.Figure()
                             
                             # Add heatmap
@@ -336,98 +333,27 @@ def render_page():
                             )
                             st.plotly_chart(fig_future_binary, use_container_width=True)
                         
-                        # Probability maps (optional)
-                        if show_probability_maps:
-                            st.markdown("### Mapas de Probabilidade")
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.markdown("#### Probabilidade Atual")
-                                fig_current_prob = go.Figure(data=go.Heatmap(
-                                    z=current_prediction['map'][::-1],
-                                    colorscale='Viridis',
-                                    showscale=True,
-                                    colorbar=dict(title="Probabilidade")
-                                ))
-                                fig_current_prob.update_layout(
-                                    title="Presente",
-                                    xaxis_title="Longitude",
-                                    yaxis_title="Latitude",
-                                    height=400
-                                )
-                                # Add Brazil boundary
-                                fig_current_prob.add_trace(go.Scattergl(
-                                    x=brazil_x,
-                                    y=brazil_y,
-                                    mode='lines',
-                                    line=dict(color='black', width=2),
-                                    showlegend=False,
-                                    hoverinfo='skip'
-                                ))
-                                st.plotly_chart(fig_current_prob, use_container_width=True)
-                            
-                            with col2:
-                                st.markdown(f"#### Probabilidade Futura ({period_code})")
-                                fig_future_prob = go.Figure(data=go.Heatmap(
-                                    z=prediction_map_future[::-1],
-                                    colorscale='Viridis',
-                                    showscale=True,
-                                    colorbar=dict(title="Probabilidade")
-                                ))
-                                fig_future_prob.update_layout(
-                                    title=f"{scenario} - {period}",
-                                    xaxis_title="Longitude",
-                                    yaxis_title="Latitude",
-                                    height=400
-                                )
-                                # Add Brazil boundary
-                                fig_future_prob.add_trace(go.Scattergl(
-                                    x=brazil_x,
-                                    y=brazil_y,
-                                    mode='lines',
-                                    line=dict(color='black', width=2),
-                                    showlegend=False,
-                                    hoverinfo='skip'
-                                ))
-                                st.plotly_chart(fig_future_prob, use_container_width=True)
-                    
-                    with tabs[1]:
-                        if show_change_map:
-                            st.subheader("Mapa de Mudanças")
-                            
-                            # Calculate change map for binary data
-                            # -1: loss, 0: no change, 1: gain
-                            change_map = binary_map_future - binary_map_current
-                            
-                            # Create custom colorscale for change map
-                            colors = ['red', 'lightgray', 'green']
-                            colorscale = [
-                                [0.0, colors[0]],  # Loss (red)
-                                [0.5, colors[1]],  # No change (gray)
-                                [1.0, colors[2]]   # Gain (green)
-                            ]
-                            
-                            fig_change = go.Figure(data=go.Heatmap(
-                                z=change_map[::-1],
-                                colorscale=colorscale,
-                                zmid=0,
-                                zmin=-1,
-                                zmax=1,
+                        # Section 2: Probability maps
+                        st.markdown("---")
+                        st.markdown("#### 2. Mapas de Probabilidade")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("#### Probabilidade Atual")
+                            fig_current_prob = go.Figure(data=go.Heatmap(
+                                z=current_prediction['map'][::-1],
+                                colorscale='Viridis',
                                 showscale=True,
-                                colorbar=dict(
-                                    title="Mudança",
-                                    tickvals=[-1, 0, 1],
-                                    ticktext=['Perda', 'Sem mudança', 'Ganho']
-                                )
+                                colorbar=dict(title="Probabilidade")
                             ))
-                            fig_change.update_layout(
-                                title=f"Mudança na Distribuição (Futuro - Presente) - Threshold: {threshold:.3f}",
+                            fig_current_prob.update_layout(
+                                title="Presente",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
-                                height=500
+                                height=400
                             )
                             # Add Brazil boundary
-                            fig_change.add_trace(go.Scattergl(
+                            fig_current_prob.add_trace(go.Scattergl(
                                 x=brazil_x,
                                 y=brazil_y,
                                 mode='lines',
@@ -435,106 +361,175 @@ def render_page():
                                 showlegend=False,
                                 hoverinfo='skip'
                             ))
-                            st.plotly_chart(fig_change, use_container_width=True)
-                            
-                            st.info("""
-                            🔴 **Vermelho**: Áreas com perda de habitat adequado
-                            🟢 **Verde**: Áreas com ganho de habitat adequado
-                            ⚪ **Cinza**: Áreas sem mudança
-                            """)
+                            st.plotly_chart(fig_current_prob, use_container_width=True)
+                        
+                        with col2:
+                            st.markdown(f"#### Probabilidade Futura ({period_code})")
+                            fig_future_prob = go.Figure(data=go.Heatmap(
+                                z=prediction_map_future[::-1],
+                                colorscale='Viridis',
+                                showscale=True,
+                                colorbar=dict(title="Probabilidade")
+                            ))
+                            fig_future_prob.update_layout(
+                                title=f"{scenario} - {period}",
+                                xaxis_title="Longitude",
+                                yaxis_title="Latitude",
+                                height=400
+                            )
+                            # Add Brazil boundary
+                            fig_future_prob.add_trace(go.Scattergl(
+                                x=brazil_x,
+                                y=brazil_y,
+                                mode='lines',
+                                line=dict(color='black', width=2),
+                                showlegend=False,
+                                hoverinfo='skip'
+                            ))
+                            st.plotly_chart(fig_future_prob, use_container_width=True)
+                    
+                    with tabs[1]:
+                        st.subheader("Análise de Mudanças")
+                        
+                        # Calculate change map for binary data
+                        # -1: loss, 0: no change, 1: gain
+                        change_map = binary_map_future - binary_map_current
+                        
+                        # Create custom colorscale for change map
+                        colors = ['red', 'lightgray', 'green']
+                        colorscale = [
+                            [0.0, colors[0]],  # Loss (red)
+                            [0.5, colors[1]],  # No change (gray)
+                            [1.0, colors[2]]   # Gain (green)
+                        ]
+                        
+                        fig_change = go.Figure(data=go.Heatmap(
+                            z=change_map[::-1],
+                            colorscale=colorscale,
+                            zmid=0,
+                            zmin=-1,
+                            zmax=1,
+                            showscale=True,
+                            colorbar=dict(
+                                title="Mudança",
+                                tickvals=[-1, 0, 1],
+                                ticktext=['Perda', 'Sem mudança', 'Ganho']
+                            )
+                        ))
+                        fig_change.update_layout(
+                            title=f"Mudança na Distribuição (Futuro - Presente) - Threshold: {threshold:.3f}",
+                            xaxis_title="Longitude",
+                            yaxis_title="Latitude",
+                            height=500
+                        )
+                        # Add Brazil boundary
+                        fig_change.add_trace(go.Scattergl(
+                            x=brazil_x,
+                            y=brazil_y,
+                            mode='lines',
+                            line=dict(color='black', width=2),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
+                        st.plotly_chart(fig_change, use_container_width=True)
+                        
+                        st.info("""
+                        🔴 **Vermelho**: Áreas com perda de habitat adequado
+                        🟢 **Verde**: Áreas com ganho de habitat adequado
+                        ⚪ **Cinza**: Áreas sem mudança
+                        """)
                     
                     with tabs[2]:
-                        if show_metrics:
-                            st.subheader("Métricas de Mudança")
+                        st.subheader("Métricas Detalhadas de Mudança")
+                        
+                        st.info(f"Threshold utilizado: {threshold:.3f}")
+                        
+                        # Calculate metrics from binary maps
+                        current_suitable = np.nansum(binary_map_current)
+                        future_suitable = np.nansum(binary_map_future)
+                        
+                        change_percent = ((future_suitable - current_suitable) / current_suitable) * 100 if current_suitable > 0 else 0
+                        
+                        col1, col2, col3 = st.columns(3)
+                        
+                        with col1:
+                            st.metric(
+                                "Área Adequada Atual",
+                                f"{current_suitable:,} pixels",
+                                delta=None
+                            )
+                        
+                        with col2:
+                            st.metric(
+                                "Área Adequada Futura",
+                                f"{future_suitable:,} pixels",
+                                delta=f"{change_percent:.1f}%"
+                            )
+                        
+                        with col3:
+                            st.metric(
+                                "Mudança Absoluta",
+                                f"{future_suitable - current_suitable:,} pixels",
+                                delta=None
+                            )
+                        
+                        # Area calculation (approximate)
+                        pixel_area_km2 = 25  # ~5km resolution
+                        current_area_km2 = current_suitable * pixel_area_km2
+                        future_area_km2 = future_suitable * pixel_area_km2
+                        
+                        st.markdown("### Estimativa de Área")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.metric(
+                                "Área Atual",
+                                f"{current_area_km2:,.0f} km²"
+                            )
                             
-                            st.info(f"Threshold utilizado: {threshold:.3f}")
+                        with col2:
+                            st.metric(
+                                "Área Futura",
+                                f"{future_area_km2:,.0f} km²",
+                                delta=f"{change_percent:.1f}%"
+                            )
                             
-                            # Calculate metrics from binary maps
-                            current_suitable = np.nansum(binary_map_current)
-                            future_suitable = np.nansum(binary_map_future)
-                            
-                            change_percent = ((future_suitable - current_suitable) / current_suitable) * 100 if current_suitable > 0 else 0
-                            
-                            col1, col2, col3 = st.columns(3)
-                            
-                            with col1:
-                                st.metric(
-                                    "Área Adequada Atual",
-                                    f"{current_suitable:,} pixels",
-                                    delta=None
-                                )
-                            
-                            with col2:
-                                st.metric(
-                                    "Área Adequada Futura",
-                                    f"{future_suitable:,} pixels",
-                                    delta=f"{change_percent:.1f}%"
-                                )
-                            
-                            with col3:
-                                st.metric(
-                                    "Mudança Absoluta",
-                                    f"{future_suitable - current_suitable:,} pixels",
-                                    delta=None
-                                )
-                            
-                            # Area calculation (approximate)
-                            pixel_area_km2 = 25  # ~5km resolution
-                            current_area_km2 = current_suitable * pixel_area_km2
-                            future_area_km2 = future_suitable * pixel_area_km2
-                            
-                            st.markdown("### Estimativa de Área")
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.metric(
-                                    "Área Atual",
-                                    f"{current_area_km2:,.0f} km²"
-                                )
-                            
-                            with col2:
-                                st.metric(
-                                    "Área Futura",
-                                    f"{future_area_km2:,.0f} km²",
-                                    delta=f"{change_percent:.1f}%"
-                                )
-                            
-                            # Summary statistics
-                            st.markdown("### Estatísticas de Mudança")
-                            
-                            # Areas of gain and loss from binary maps
-                            valid_pixels = ~np.isnan(binary_map_current) & ~np.isnan(binary_map_future)
-                            
-                            gain_mask = (binary_map_future == 1) & (binary_map_current == 0) & valid_pixels
-                            loss_mask = (binary_map_future == 0) & (binary_map_current == 1) & valid_pixels
-                            stable_present_mask = (binary_map_future == 1) & (binary_map_current == 1) & valid_pixels
-                            stable_absent_mask = (binary_map_future == 0) & (binary_map_current == 0) & valid_pixels
-                            
-                            gain_area = gain_mask.sum() * pixel_area_km2
-                            loss_area = loss_mask.sum() * pixel_area_km2
-                            stable_present_area = stable_present_mask.sum() * pixel_area_km2
-                            stable_absent_area = stable_absent_mask.sum() * pixel_area_km2
-                            
-                            fig_pie = go.Figure(data=[go.Pie(
-                                labels=['Ganho', 'Perda', 'Habitat Estável', 'Sem Habitat Estável'],
-                                values=[gain_area, loss_area, stable_present_area, stable_absent_area],
-                                hole=.3,
-                                marker_colors=['green', 'red', 'darkgreen', 'lightgray']
-                            )])
-                            fig_pie.update_layout(title="Distribuição de Mudanças")
-                            st.plotly_chart(fig_pie, use_container_width=True)
-                            
-                            # Additional metrics
-                            st.markdown("### Resumo Detalhado")
-                            col1, col2 = st.columns(2)
-                            
-                            with col1:
-                                st.metric("Ganho de Habitat", f"{gain_area:,.0f} km²")
-                                st.metric("Habitat Estável", f"{stable_present_area:,.0f} km²")
-                            
-                            with col2:
-                                st.metric("Perda de Habitat", f"{loss_area:,.0f} km²")
-                                st.metric("Mudança Líquida", f"{(gain_area - loss_area):,.0f} km²")
+                        # Summary statistics
+                        st.markdown("### Estatísticas de Mudança")
+                        
+                        # Areas of gain and loss from binary maps
+                        valid_pixels = ~np.isnan(binary_map_current) & ~np.isnan(binary_map_future)
+                        
+                        gain_mask = (binary_map_future == 1) & (binary_map_current == 0) & valid_pixels
+                        loss_mask = (binary_map_future == 0) & (binary_map_current == 1) & valid_pixels
+                        stable_present_mask = (binary_map_future == 1) & (binary_map_current == 1) & valid_pixels
+                        stable_absent_mask = (binary_map_future == 0) & (binary_map_current == 0) & valid_pixels
+                        
+                        gain_area = gain_mask.sum() * pixel_area_km2
+                        loss_area = loss_mask.sum() * pixel_area_km2
+                        stable_present_area = stable_present_mask.sum() * pixel_area_km2
+                        stable_absent_area = stable_absent_mask.sum() * pixel_area_km2
+                        
+                        fig_pie = go.Figure(data=[go.Pie(
+                            labels=['Ganho', 'Perda', 'Habitat Estável', 'Sem Habitat Estável'],
+                            values=[gain_area, loss_area, stable_present_area, stable_absent_area],
+                            hole=.3,
+                            marker_colors=['green', 'red', 'darkgreen', 'lightgray']
+                        )])
+                        fig_pie.update_layout(title="Distribuição de Mudanças")
+                        st.plotly_chart(fig_pie, use_container_width=True)
+                        
+                        # Additional metrics
+                        st.markdown("### Resumo Detalhado")
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.metric("Ganho de Habitat", f"{gain_area:,.0f} km²")
+                            st.metric("Habitat Estável", f"{stable_present_area:,.0f} km²")
+                        
+                        with col2:
+                            st.metric("Perda de Habitat", f"{loss_area:,.0f} km²")
+                            st.metric("Mudança Líquida", f"{(gain_area - loss_area):,.0f} km²")
                     
                     with tabs[3]:
                         st.subheader("Exportar Resultados")

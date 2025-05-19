@@ -148,19 +148,19 @@ if page == "Home":
         st.markdown(f"**{icon_title}**: {description}")
 
 elif page == "1. Busca de Espécies (GBIF)":
-    pagina_busca_api.render_page()
+    pagina_busca_api()
 
 elif page == "2. Pseudo-ausências":
-    pagina_pseudoausencias.render_page()
+    pagina_pseudoausencias()
 
 elif page == "3. Análise Bioclimática":
-    pagina_analise_bioclimatica.render_page()
+    pagina_analise_bioclimatica()
 
 elif page == "4. Modelagem e Resultados":
-    pagina_modelagem.render_page()
+    pagina_modelagem()
 
 elif page == "5. Projeção Espacial":
-    pagina_projecao_espacial.render_page()
+    pagina_projecao_espacial()
 
 elif page == "6. Projeção Futura":
-    pagina_projecao_futura.render_page()
+    pagina_projecao_futura()
