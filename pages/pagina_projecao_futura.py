@@ -11,6 +11,9 @@ from datetime import datetime
 import geopandas as gpd
 from rasterio.mask import mask
 from utils.brazil_boundary import get_brazil_boundary, get_brazil_gdf
+from PIL import Image
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 def render_page():
     st.title("🌡️ Projeção Futura - Mudanças Climáticas")
@@ -102,7 +105,14 @@ def render_page():
     with col1:
         st.header("Projeção de Distribuição Futura")
         
+        # Use session state to maintain the state
+        if 'future_projection_done' not in st.session_state:
+            st.session_state.future_projection_done = False
+        
         if st.button("Gerar Projeção Futura", type="primary"):
+            st.session_state.future_projection_done = True
+        
+        if st.session_state.future_projection_done:
             with st.spinner("Preparando dados climáticos futuros..."):
                 try:
                     # Future climate data path
@@ -541,74 +551,141 @@ def render_page():
                             'transform': transform
                         }
                         
-                        col1, col2 = st.columns(2)
+                        # Only JPEG export section
+                        st.markdown("### 📥 Exportar Mapas em JPEG")
+                        st.info("Clique nos botões abaixo para baixar os mapas em alta resolução")
+                        
+                        import io
+                        
+                        col1, col2, col3 = st.columns(3)
                         
                         with col1:
-                            if st.button("Exportar Mapa Binário Futuro (GeoTIFF)"):
-                                export_path = Path(f"exports/future_binary_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tif")
-                                export_path.parent.mkdir(exist_ok=True)
-                                
-                                with rasterio.open(
-                                    export_path,
-                                    'w',
-                                    driver='GTiff',
-                                    height=height,
-                                    width=width,
-                                    count=1,
-                                    dtype=binary_map_future.dtype,
-                                    crs=crs,
-                                    transform=transform,
-                                    nodata=-9999
-                                ) as dst:
-                                    dst.write(binary_map_future, 1)
-                                
-                                st.success(f"Mapa binário exportado: {export_path}")
+                            # Create JPEG in memory for binary map
+                            binary_jpeg_buffer = io.BytesIO()
                             
-                            if st.button("Exportar Mapa de Probabilidade Futuro (GeoTIFF)"):
-                                export_path = Path(f"exports/future_probability_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tif")
-                                export_path.parent.mkdir(exist_ok=True)
+                            # Create colorful visualization
+                            fig, ax = plt.subplots(figsize=(10, 8))
+                            
+                            # Create custom colormap for binary map (white for 0, dark green for 1)
+                            cmap = mcolors.ListedColormap(['white', 'darkgreen'])
+                            # Use correct orientation with origin parameter
+                            im = ax.imshow(binary_map_future, cmap=cmap, extent=[bounds[0], bounds[2], bounds[1], bounds[3]], origin='upper')
+                            
+                            # Add Brazil boundary
+                            ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                            
+                            # Add labels and title
+                            ax.set_xlabel('Longitude')
+                            ax.set_ylabel('Latitude')
+                            ax.set_title(f'Distribuição Futura - {scenario} ({period})')
+                            
+                            # Add colorbar
+                            cbar = plt.colorbar(im, ax=ax, ticks=[0, 1])
+                            cbar.set_label('Presença')
+                            cbar.ax.set_yticklabels(['Ausente', 'Presente'])
+                            
+                            # Save to buffer
+                            plt.tight_layout()
+                            plt.savefig(binary_jpeg_buffer, format='jpeg', dpi=300, bbox_inches='tight')
+                            plt.close()
+                            binary_jpeg_buffer.seek(0)
+                            
+                            st.download_button(
+                                label="⬇️ Mapa Binário",
+                                data=binary_jpeg_buffer,
+                                file_name=f"future_binary_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                mime="image/jpeg",
+                                key="download_binary_jpeg"
+                            )
                                 
-                                with rasterio.open(
-                                    export_path,
-                                    'w',
-                                    driver='GTiff',
-                                    height=height,
-                                    width=width,
-                                    count=1,
-                                    dtype=prediction_map_future.dtype,
-                                    crs=crs,
-                                    transform=transform,
-                                    nodata=np.nan
-                                ) as dst:
-                                    dst.write(prediction_map_future, 1)
+                            with col2:
+                                # Create JPEG in memory for probability map
+                                prob_jpeg_buffer = io.BytesIO()
                                 
-                                st.success(f"Mapa de probabilidade exportado: {export_path}")
-                        
-                        with col2:
-                            if st.button("Exportar Mapa de Mudanças (GeoTIFF)"):
-                                export_path = Path(f"exports/change_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.tif")
-                                export_path.parent.mkdir(exist_ok=True)
+                                # Create colorful visualization
+                                fig, ax = plt.subplots(figsize=(10, 8))
                                 
-                                with rasterio.open(
-                                    export_path,
-                                    'w',
-                                    driver='GTiff',
-                                    height=height,
-                                    width=width,
-                                    count=1,
-                                    dtype=change_map.dtype,
-                                    crs=crs,
-                                    transform=transform,
-                                    nodata=np.nan
-                                ) as dst:
-                                    dst.write(change_map, 1)
+                                # Use Viridis colormap for probability
+                                im = ax.imshow(prediction_map_future, cmap='viridis', extent=[bounds[0], bounds[2], bounds[1], bounds[3]], vmin=0, vmax=1, origin='upper')
                                 
-                                st.success(f"Mapa de mudanças exportado: {export_path}")
+                                # Add Brazil boundary
+                                ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                                
+                                # Add labels and title
+                                ax.set_xlabel('Longitude')
+                                ax.set_ylabel('Latitude')
+                                ax.set_title(f'Probabilidade de Ocorrência Futura - {scenario} ({period})')
+                                
+                                # Add colorbar
+                                cbar = plt.colorbar(im, ax=ax)
+                                cbar.set_label('Probabilidade')
+                                
+                                # Save to buffer
+                                plt.tight_layout()
+                                plt.savefig(prob_jpeg_buffer, format='jpeg', dpi=300, bbox_inches='tight')
+                                plt.close()
+                                prob_jpeg_buffer.seek(0)
+                                
+                                st.download_button(
+                                    label="⬇️ Mapa de Probabilidade",
+                                    data=prob_jpeg_buffer,
+                                    file_name=f"future_probability_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                    mime="image/jpeg",
+                                    key="download_prob_jpeg"
+                                )
+                            
+                            with col3:
+                                # Create JPEG in memory for change map
+                                change_jpeg_buffer = io.BytesIO()
+                                
+                                # Create colorful visualization
+                                fig, ax = plt.subplots(figsize=(10, 8))
+                                
+                                # Create custom colormap for change map (red for loss, gray for no change, green for gain)
+                                cmap = mcolors.ListedColormap(['red', 'lightgray', 'green'])
+                                bounds_cmap = [-1.5, -0.5, 0.5, 1.5]
+                                norm = mcolors.BoundaryNorm(bounds_cmap, cmap.N)
+                                
+                                im = ax.imshow(change_map, cmap=cmap, norm=norm, extent=[bounds[0], bounds[2], bounds[1], bounds[3]], origin='upper')
+                                
+                                # Add Brazil boundary
+                                ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                                
+                                # Add labels and title
+                                ax.set_xlabel('Longitude')
+                                ax.set_ylabel('Latitude')
+                                ax.set_title(f'Mudança na Distribuição - {scenario} ({period})')
+                                
+                                # Add colorbar with custom labels
+                                cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1])
+                                cbar.set_label('Mudança')
+                                cbar.ax.set_yticklabels(['Perda', 'Sem mudança', 'Ganho'])
+                                
+                                # Save to buffer
+                                plt.tight_layout()
+                                plt.savefig(change_jpeg_buffer, format='jpeg', dpi=300, bbox_inches='tight')
+                                plt.close()
+                                change_jpeg_buffer.seek(0)
+                                
+                                st.download_button(
+                                    label="⬇️ Mapa de Mudanças",
+                                    data=change_jpeg_buffer,
+                                    file_name=f"change_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                    mime="image/jpeg",
+                                    key="download_change_jpeg"
+                                )
                 
                 except Exception as e:
                     st.error(f"Erro ao gerar projeção futura: {str(e)}")
                     import traceback
                     st.error(traceback.format_exc())
+        
+        # Add reset button to go back to initial state
+        if st.session_state.future_projection_done:
+            st.markdown("---")
+            if st.button("Nova Projeção", type="secondary"):
+                st.session_state.future_projection_done = False
+                st.rerun()
     
     with col2:
         st.markdown("### ℹ️ Sobre esta análise")
