@@ -238,15 +238,6 @@ if pagina == "Início":
         - *Nota: GCM único para fins didáticos*
         """)
     
-    # Estatísticas rápidas
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total de Módulos", "6")
-    with col2:
-        st.metric("Fluxo SDM", "Completo")
-    with col3:
-        st.metric("Status da Plataforma", "Ativa")
-    
     # Começando
     st.markdown("---")
     st.subheader("🎯 Como Começar")
