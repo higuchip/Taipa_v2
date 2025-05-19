@@ -6,14 +6,19 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Import page modules
-from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica, pagina_modelagem, pagina_projecao_espacial
+from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica, pagina_modelagem, pagina_projecao_espacial, pagina_projecao_futura
 
 # Page configuration
 st.set_page_config(
     page_title="TAIPA - Tecnologia Aplicada para Pesquisa Ambiental",
     page_icon="🌿",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    }
 )
 
 # Custom CSS for better aesthetics
@@ -49,7 +54,8 @@ page = st.sidebar.radio(
         "2. Pseudo-ausências",
         "3. Análise Bioclimática",
         "4. Modelagem e Resultados",
-        "5. Projeção Espacial"
+        "5. Projeção Espacial",
+        "6. Projeção Futura"
     ]
 )
 
@@ -98,12 +104,19 @@ if page == "Home":
         - Generate habitat suitability maps
         - Apply optimal thresholds
         - Export results as GeoTIFF
+        
+        **6. Future Projection**
+        - Climate change impact analysis
+        - SSP1-2.6 vs SSP5-8.5 scenarios
+        - 2081-2100 projections
+        - Change and stability maps
+        - *Note: Single GCM for didactic purposes*
         """)
     
     # Quick stats
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Modules", "5")
+        st.metric("Total Modules", "6")
     with col2:
         st.metric("SDM Workflow", "Complete")
     with col3:
@@ -127,7 +140,8 @@ if page == "Home":
         "🌡️ Environmental Variables": "19 WorldClim bioclimatic layers",
         "🤖 Machine Learning": "Random Forest with cross-validation",
         "📊 Model Evaluation": "Comprehensive performance metrics",
-        "💾 Model Persistence": "Save and load trained models"
+        "💾 Model Persistence": "Save and load trained models",
+        "🌡️ Climate Projections": "Future scenarios (SSP1-2.6, SSP5-8.5)"
     }
     
     for icon_title, description in features.items():
@@ -147,3 +161,6 @@ elif page == "4. Modelagem e Resultados":
 
 elif page == "5. Projeção Espacial":
     pagina_projecao_espacial.render_page()
+
+elif page == "6. Projeção Futura":
+    pagina_projecao_futura.render_page()

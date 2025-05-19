@@ -15,6 +15,17 @@ def render_page():
     st.title("🗺️ Projeção Espacial do Modelo")
     st.markdown("Gere mapas de adequabilidade ambiental usando o modelo treinado")
     
+    # Display species info
+    if 'species_name' in st.session_state:
+        st.info(f"🌿 Espécie: **{st.session_state['species_name']}**")
+    
+    if 'model_species' in st.session_state:
+        if st.session_state.get('species_name') != st.session_state.get('model_species'):
+            st.error(f"⚠️ Modelo treinado para: **{st.session_state['model_species']}**")
+            st.warning("A espécie atual é diferente da espécie do modelo. Por favor, retreine o modelo.")
+        else:
+            st.success(f"✅ Modelo treinado para: **{st.session_state['model_species']}**")
+    
     # Check if model is trained
     if not st.session_state.get('model_trained'):
         st.warning("⚠️ Treine um modelo na aba de Modelagem primeiro.")
@@ -166,6 +177,15 @@ def render_page():
                     'crs': crs,
                     'transform': transform,
                     'bounds': bounds
+                }
+                
+                # Save current prediction for future comparison
+                st.session_state['last_prediction'] = {
+                    'map': prediction_map.copy(),
+                    'bounds': bounds,
+                    'crs': crs,
+                    'transform': transform,
+                    'threshold': threshold
                 }
                 
                 st.success("✅ Projeção concluída!")

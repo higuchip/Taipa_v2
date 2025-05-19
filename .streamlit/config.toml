@@ -9,6 +9,15 @@ font = "sans serif"
 maxUploadSize = 10
 enableCORS = true
 enableXsrfProtection = true
+runOnSave = false
 
 [browser]
 gatherUsageStats = false
+
+[client]
+showSidebarNavigation = false
+toolbarMode = "minimal"
+
+[runner]
+magicEnabled = false
+installTracer = false

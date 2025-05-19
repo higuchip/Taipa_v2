@@ -118,11 +118,6 @@ def render_page():
         # Alternative: check for last active drawing
         last_drawing = folium_output.get("last_active_drawing") if folium_output else None
         
-        # Debug information
-        if st.checkbox("Mostrar debug de polígonos", key="debug_polygons"):
-            st.write("all_draws:", drawn)
-            st.write("last_active_drawing:", last_drawing)
-            st.json(folium_output)
         
         # Use either drawn polygons or last active drawing
         shapes_to_process = drawn if drawn else ([last_drawing] if last_drawing else [])

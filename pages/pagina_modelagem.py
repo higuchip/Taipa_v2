@@ -31,7 +31,7 @@ def check_species_change():
         st.session_state['y_model'] = None
         st.session_state['feature_importance'] = None
         
-        st.warning(f"⚠️ A espécie mudou de '{last_modeled_species}' para '{current_species}'. Por favor, retreine o modelo.")
+        st.warning(f"⚠️ A espécie mudou de '{last_modeled_species}' para '{current_species}'. Por favor, volte à aba 'Preparação de Dados' e retreine o modelo.")
         return True
     
     return False
@@ -53,14 +53,9 @@ def render_page():
         current_species = st.session_state['species_name']
         model_species = st.session_state.get('model_species', 'Nenhum modelo treinado')
         
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("🌿 Espécie Atual", current_species)
-        with col2:
-            st.metric("🤖 Modelo Treinado Para", model_species)
-        
         if current_species != model_species and st.session_state.get('model_trained', False):
-            st.error("⚠️ ATENÇÃO: A espécie mudou! O modelo precisa ser retreinado.")
+            st.error(f"⚠️ ATENÇÃO: A espécie mudou de '{model_species}' para '{current_species}'. Por favor, retreine o modelo.")
+            st.warning("💡 Dica: Volte à aba 'Preparação de Dados' para recarregar os dados da nova espécie.")
     
     # Initialize session state
     if 'model_trained' not in st.session_state:
@@ -141,15 +136,6 @@ def render_page():
     with tab1:
         st.header("Preparação de Dados para Modelagem")
         
-        # Debug: show what's in session state
-        if st.checkbox("Debug: Ver session_state"):
-            relevant_keys = [k for k in st.session_state.keys() if any(x in k for x in ['bioclim', 'occurrence', 'pseudo', 'absence', 'data'])]
-            st.write("Keys relevantes no session_state:", relevant_keys)
-            for key in relevant_keys:
-                st.write(f"{key}: {type(st.session_state[key])}")
-                if isinstance(st.session_state[key], pd.DataFrame):
-                    st.write(f"  Shape: {st.session_state[key].shape}")
-                    st.write(f"  Columns: {list(st.session_state[key].columns)}")
         
         # Check if bioclim data is available
         if 'bioclim_data' not in st.session_state:
@@ -490,9 +476,11 @@ def render_page():
         
         # Check if the current bioclim data has the required variables
         missing_vars = [var for var in trained_vars if var not in bioclim_data.columns]
+        
         if missing_vars:
-            st.error(f"As seguintes variáveis usadas no treinamento não estão disponíveis nos dados atuais: {', '.join(missing_vars)}")
-            st.warning("Isso geralmente ocorre quando você muda de espécie. Por favor, retreine o modelo com os novos dados.")
+            st.error("⚠️ As variáveis bioclimáticas usadas no modelo não estão disponíveis nos dados atuais!")
+            st.write(f"❌ Variáveis faltantes: {', '.join(missing_vars)}")
+            st.warning("Isso ocorre quando você muda de espécie. Por favor, volte à aba 'Preparação de Dados' e retreine o modelo.")
             
             # Clear the model trained flag to force retraining
             st.session_state['model_trained'] = False

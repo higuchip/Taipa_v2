@@ -4,9 +4,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-from utils.bioclim_analysis import BioclimAnalyzer
+from utils.bioclim_analysis_optimized import BioclimAnalyzer
 import warnings
 warnings.filterwarnings('ignore')
+
+@st.cache_resource
+def get_analyzer():
+    """Cache the BioclimAnalyzer instance"""
+    return BioclimAnalyzer()
+
+@st.cache_data
+def extract_bioclim_values(points_tuple, layers, analyzer_id):
+    """Cache the extraction results"""
+    # Convert tuple back to list for processing
+    points = list(points_tuple)
+    analyzer = get_analyzer()
+    return analyzer.extract_values_at_points_optimized(points, layers)
 
 def render_page():
     st.title("Análise de Variáveis Bioclimáticas")
@@ -26,7 +39,7 @@ def render_page():
         return
     
     # Initialize analyzer
-    analyzer = BioclimAnalyzer(data_dir)
+    analyzer = get_analyzer()
     
     if not analyzer.available_layers:
         st.error("Nenhum layer bioclimático encontrado no diretório de dados.")
@@ -134,12 +147,47 @@ def render_page():
         point_types.extend(['absence'] * len(absence_points))
         
         if st.button("Extrair Valores Bioclimáticos", type="primary"):
-            with st.spinner("Extraindo valores bioclimáticos..."):
-                df_analysis = analyzer.extract_values_at_points(points, selected_vars)
+            import time
+            start_time = time.time()
+            
+            # Progress bar
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            try:
+                status_text.text("Preparando extração...")
+                
+                # Use cached extraction
+                # Convert points to tuple for caching
+                points_tuple = tuple(points)
+                df_analysis = extract_bioclim_values(points_tuple, selected_vars, id(analyzer))
+                
                 # Add point type column
                 df_analysis['point_type'] = point_types
                 st.session_state['bioclim_data'] = df_analysis
-                st.success(f"Valores extraídos para {len(points)} pontos!")
+                
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                
+                progress_bar.progress(1.0)
+                status_text.text("Extração concluída!")
+                
+                st.success(f"✅ Valores extraídos para {len(points)} pontos em {elapsed_time:.2f} segundos!")
+                
+                # Show performance metrics
+                points_per_second = len(points) / elapsed_time
+                if points_per_second > 100:
+                    st.info(f"💡 Performance: {points_per_second:.0f} pontos/segundo - Extração otimizada!")
+                
+                # Clear progress elements
+                time.sleep(1)
+                progress_bar.empty()
+                status_text.empty()
+                
+            except Exception as e:
+                progress_bar.empty()
+                status_text.empty()
+                st.error(f"Erro na extração: {str(e)}")
     elif (has_occurrence_data or has_pseudo_absence_data) and selected_vars:
         st.warning("⚠️ São necessários tanto dados de ocorrência quanto pseudo-ausências para realizar a análise completa.")
     else:
