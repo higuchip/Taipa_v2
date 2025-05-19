@@ -76,6 +76,11 @@ def render_page():
         
         # Display metrics
         st.divider()
+        
+        # Display species name if available
+        if 'species_name' in st.session_state:
+            st.info(f"🌿 Espécie: **{st.session_state['species_name']}**")
+        
         metric_col1, metric_col2, metric_col3 = st.columns(3)
         with metric_col1:
             st.metric("Total de ocorrências", len(st.session_state.get('original_occurrences', [])))
@@ -184,6 +189,15 @@ def render_page():
             })
         df = pd.DataFrame(df_data)
         st.session_state['gbif_data'] = df
+        
+        # Store species name - get from first occurrence if available
+        if df_data and 'scientificName' in df_data[0]:
+            species_for_session = df_data[0]['scientificName']
+        else:
+            # Fallback to session state if already exists
+            species_for_session = st.session_state.get('species_name', 'Unknown Species')
+            
+        st.session_state['species_name'] = species_for_session  # Store species name
 
         # Display data table
         with st.expander("Dados das ocorrências", expanded=False):

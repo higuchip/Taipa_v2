@@ -26,13 +26,16 @@ class SDMModel:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
     
-    def create_pipeline(self, n_estimators: int = 100, max_depth: Optional[int] = None) -> Pipeline:
+    def create_pipeline(self, n_estimators: int = 100, max_depth: Optional[int] = None,
+                       min_samples_split: int = 2, min_samples_leaf: int = 1) -> Pipeline:
         """Create scikit-learn pipeline with preprocessing and Random Forest"""
         pipeline = Pipeline([
             ('scaler', StandardScaler()),
             ('classifier', RandomForestClassifier(
                 n_estimators=n_estimators,
                 max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
                 random_state=self.random_state,
                 n_jobs=-1,
                 class_weight='balanced'
@@ -60,7 +63,9 @@ class SDMModel:
     def train(self, X: np.ndarray, y: np.ndarray, 
               test_size: float = 0.2,
               n_estimators: int = 100,
-              max_depth: Optional[int] = None) -> Dict:
+              max_depth: Optional[int] = None,
+              min_samples_split: int = 2,
+              min_samples_leaf: int = 1) -> Dict:
         """Train the model with standard train-test split"""
         
         # Split data
@@ -70,7 +75,7 @@ class SDMModel:
         )
         
         # Create and train pipeline
-        self.model = self.create_pipeline(n_estimators, max_depth)
+        self.model = self.create_pipeline(n_estimators, max_depth, min_samples_split, min_samples_leaf)
         
         self.logger.info("Training Random Forest model...")
         self.model.fit(X_train, y_train)
@@ -113,7 +118,7 @@ class SDMModel:
         if self.model is None:
             raise ValueError("Model not trained yet")
         
-        return self.model.predict_proba(X)[:, 1]
+        return self.model.predict_proba(X)
     
     def save_model(self, filepath: str):
         """Save trained model with metadata"""

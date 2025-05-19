@@ -114,7 +114,7 @@ def render_page():
         buffer_dist = st.slider(
             "Distância do buffer (km)",
             min_value=50,
-            max_value=500,
+            max_value=1000,
             value=200,
             step=10,
             help="Raio máximo ao redor dos pontos de presença"
@@ -124,7 +124,7 @@ def render_page():
         exclusion_radius = st.slider(
             "Raio de exclusão (km)",
             min_value=5,
-            max_value=50,
+            max_value=100,
             value=10,
             step=5,
             help="Distância mínima dos pontos de presença"

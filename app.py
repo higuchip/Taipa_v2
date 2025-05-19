@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Import page modules
-from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica, pagina_modelagem
+from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica, pagina_modelagem, pagina_projecao_espacial
 
 # Page configuration
 st.set_page_config(
@@ -48,7 +48,8 @@ page = st.sidebar.radio(
         "1. Busca de Espécies (GBIF)",
         "2. Pseudo-ausências",
         "3. Análise Bioclimática",
-        "4. Modelagem e Resultados"
+        "4. Modelagem e Resultados",
+        "5. Projeção Espacial"
     ]
 )
 
@@ -92,12 +93,17 @@ if page == "Home":
         - Train Random Forest models
         - Cross-validation and performance metrics
         - Save and load models for future use
+        
+        **5. Spatial Projection**
+        - Generate habitat suitability maps
+        - Apply optimal thresholds
+        - Export results as GeoTIFF
         """)
     
     # Quick stats
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Modules", "4")
+        st.metric("Total Modules", "5")
     with col2:
         st.metric("SDM Workflow", "Complete")
     with col3:
@@ -138,3 +144,6 @@ elif page == "3. Análise Bioclimática":
 
 elif page == "4. Modelagem e Resultados":
     pagina_modelagem.render_page()
+
+elif page == "5. Projeção Espacial":
+    pagina_projecao_espacial.render_page()

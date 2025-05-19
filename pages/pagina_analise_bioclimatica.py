@@ -68,13 +68,15 @@ def render_page():
     available_vars = list(analyzer.available_layers.keys())
     available_vars.sort(key=lambda x: int(x.replace('bio', '')))
     
+    st.info(f"📊 {len(available_vars)} variáveis bioclimáticas disponíveis. Todas estão selecionadas por padrão para análise completa.")
+    
     # Debug info
     # st.write(f"Variáveis disponíveis: {available_vars}")
     
     selected_vars = st.multiselect(
         "Selecione as variáveis bioclimáticas para análise",
         options=available_vars,
-        default=available_vars[:10] if len(available_vars) >= 10 else available_vars,
+        default=available_vars,  # Include all variables by default
         format_func=lambda x: f"{x}: {analyzer.metadata['layers'].get(x, {}).get('name', x)}"
     )
     

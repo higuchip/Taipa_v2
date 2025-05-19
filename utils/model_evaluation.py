@@ -247,14 +247,39 @@ class ModelEvaluator:
         return report
 
 # Standalone functions for backward compatibility
-def create_roc_curve(y_true: np.ndarray, y_pred_proba: np.ndarray) -> go.Figure:
-    """Create ROC curve plot"""
-    evaluator = ModelEvaluator()
-    evaluator.calculate_metrics(y_true, np.round(y_pred_proba), y_pred_proba)
-    return evaluator.plot_roc_curve()
+def create_roc_curve(y_true: np.ndarray, y_pred_proba: np.ndarray) -> plt.Figure:
+    """Create ROC curve plot using matplotlib"""
+    from sklearn.metrics import roc_curve, auc
+    
+    fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(fpr, tpr, color='darkorange', lw=2, label=f'ROC curve (AUC = {roc_auc:.3f})')
+    ax.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--', label='Random')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate')
+    ax.set_ylabel('True Positive Rate')
+    ax.set_title('Receiver Operating Characteristic (ROC) Curve')
+    ax.legend(loc="lower right")
+    ax.grid(True, alpha=0.3)
+    
+    return fig
 
-def create_confusion_matrix_plot(y_true: np.ndarray, y_pred: np.ndarray) -> go.Figure:
-    """Create confusion matrix plot"""
-    evaluator = ModelEvaluator()
-    evaluator.calculate_metrics(y_true, y_pred, np.ones_like(y_pred))
-    return evaluator.plot_confusion_matrix()
+def create_confusion_matrix_plot(y_true: np.ndarray, y_pred: np.ndarray) -> plt.Figure:
+    """Create confusion matrix plot using matplotlib"""
+    from sklearn.metrics import confusion_matrix
+    
+    cm = confusion_matrix(y_true, y_pred)
+    
+    fig, ax = plt.subplots(figsize=(6, 5))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+                xticklabels=['Absence', 'Presence'],
+                yticklabels=['Absence', 'Presence'],
+                ax=ax)
+    ax.set_xlabel('Predicted')
+    ax.set_ylabel('Actual')
+    ax.set_title('Confusion Matrix')
+    
+    return fig
