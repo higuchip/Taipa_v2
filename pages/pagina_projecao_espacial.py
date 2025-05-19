@@ -23,30 +23,6 @@ def render_page():
     model = st.session_state['trained_model']
     selected_vars = st.session_state['selected_vars']
     
-    # Debug info
-    st.write(f"Variáveis selecionadas: {selected_vars}")
-    
-    # Check model type and parameters
-    if hasattr(model, 'model'):
-        st.write(f"Tipo do modelo: {type(model.model)}")
-        if hasattr(model.model, 'named_steps'):
-            st.write(f"Pipeline steps: {list(model.model.named_steps.keys())}")
-    
-    # Check training data statistics if available
-    if 'X_model' in st.session_state:
-        X_train = st.session_state['X_model']
-        st.write("Estatísticas dos dados de treinamento:")
-        st.write(X_train.describe())
-        
-        # Show geographic distribution of training points
-        if 'bioclim_data' in st.session_state:
-            bioclim_data = st.session_state['bioclim_data']
-            presence_data = bioclim_data[bioclim_data['point_type'] == 'presence']
-            
-            st.write(f"Pontos de presença no treinamento: {len(presence_data)}")
-            st.write("Distribuição geográfica dos pontos de presença:")
-            st.write(f"Latitude: {presence_data['latitude'].min():.2f} a {presence_data['latitude'].max():.2f}")
-            st.write(f"Longitude: {presence_data['longitude'].min():.2f} a {presence_data['longitude'].max():.2f}")
     
     # Configuration
     with st.sidebar:
@@ -114,10 +90,6 @@ def render_page():
                         
                         bio_data[i] = data
                         
-                        # Debug statistics
-                        valid_data_mask = data > -9999 if var_num > 11 else data > -999
-                        valid_data_temp = data[valid_data_mask]
-                        st.write(f"Carregado {var}: min={valid_data_temp.min():.2f}, max={valid_data_temp.max():.2f}, média={valid_data_temp.mean():.2f}")
                     
                     progress_bar.progress((i + 1) / n_vars)
                 
@@ -134,66 +106,18 @@ def render_page():
                 # After temperature conversion, nodata values are -999.9 for temperature vars
                 valid_mask = ~np.any(np.logical_or(bio_flat <= -999, np.isnan(bio_flat)), axis=1)
                 
-                st.write(f"Pixels válidos: {np.sum(valid_mask)} de {len(valid_mask)}")
-                
                 # Predict only on valid pixels
                 predictions = np.full(height * width, np.nan)
                 if np.any(valid_mask):
                     valid_data = bio_flat[valid_mask]
                     
-                    st.write(f"Shape dos dados válidos: {valid_data.shape}")
-                    st.write(f"Min/Max dos dados: {valid_data.min():.2f} / {valid_data.max():.2f}")
-                    
                     # Create DataFrame with correct column names
                     df_predict = pd.DataFrame(valid_data, columns=selected_vars)
-                    
-                    # Debug data before prediction
-                    st.write("Debug do DataFrame antes da predição:")
-                    st.write(f"Shape: {df_predict.shape}")
-                    st.write(f"Colunas: {df_predict.columns.tolist()}")
-                    st.write("Primeiras 5 linhas:")
-                    st.write(df_predict.head())
-                    st.write("Estatísticas descritivas:")
-                    st.write(df_predict.describe())
-                    
-                    # Check scaling if model has scaler
-                    if hasattr(model, 'model') and hasattr(model.model, 'named_steps'):
-                        if 'scaler' in model.model.named_steps:
-                            scaler = model.model.named_steps['scaler']
-                            st.write("Parâmetros do StandardScaler (mean e std do treinamento):")
-                            for i, var in enumerate(selected_vars):
-                                st.write(f"{var}: mean={scaler.mean_[i]:.4f}, std={scaler.scale_[i]:.4f}")
-                            
-                            # Show how data would be transformed
-                            st.write("Exemplo de transformação (primeiras 5 linhas):")
-                            transformed_sample = scaler.transform(df_predict.head())
-                            st.write(pd.DataFrame(transformed_sample, columns=selected_vars))
                     
                     # Make predictions
                     try:
                         probabilities = model.predict_proba(df_predict)[:, 1]
                         predictions[valid_mask] = probabilities
-                        st.write(f"Predições realizadas com sucesso!")
-                        st.write(f"Probabilidades - Min: {probabilities.min():.6f}, Max: {probabilities.max():.6f}, Média: {probabilities.mean():.6f}")
-                        
-                        # Check for suspicious patterns
-                        prob_std = probabilities.std()
-                        st.write(f"Desvio padrão das probabilidades: {prob_std:.6f}")
-                        
-                        if prob_std < 0.1:
-                            st.warning("⚠️ As probabilidades têm baixa variação, o que pode indicar problemas com o modelo ou dados.")
-                        
-                        # Check prediction at known presence locations
-                        if 'bioclim_data' in st.session_state:
-                            bioclim_data = st.session_state['bioclim_data']
-                            presence_points = bioclim_data[bioclim_data['point_type'] == 'presence']
-                            
-                            # Sample a few presence points
-                            sample_presence = presence_points.head(5)
-                            st.write("Predições em pontos de presença conhecidos:")
-                            for idx, row in sample_presence.iterrows():
-                                pred_prob = model.predict_proba(row[selected_vars].values.reshape(1, -1))[0, 1]
-                                st.write(f"Lat: {row['latitude']:.2f}, Lon: {row['longitude']:.2f} -> Prob: {pred_prob:.4f}")
                                 
                     except Exception as e:
                         st.error(f"Erro na predição: {e}")
@@ -204,12 +128,6 @@ def render_page():
                 # Reshape predictions back to 2D
                 prediction_map = predictions.reshape(height, width)
                 
-                # Debug predictions
-                st.write(f"Estatísticas das predições:")
-                st.write(f"Min: {np.nanmin(prediction_map):.6f}, Max: {np.nanmax(prediction_map):.6f}")
-                st.write(f"Média: {np.nanmean(prediction_map):.6f}, Std: {np.nanstd(prediction_map):.6f}")
-                st.write(f"Pixels com predição > 0: {np.sum(prediction_map > 0)}")
-                st.write(f"Pixels válidos (não-NaN): {np.sum(~np.isnan(prediction_map))}")
                 
                 # Apply threshold
                 if threshold_method != "Manual":
@@ -233,7 +151,6 @@ def render_page():
                                 method=threshold_method
                             )
                 
-                st.write(f"Threshold aplicado: {threshold:.4f}")
                 
                 # Create binary map
                 # First create as float to handle NaN values
