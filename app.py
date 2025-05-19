@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent))
 
 # Import page modules
-from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica
+from pages import pagina_busca_api, pagina_pseudoausencias, pagina_analise_bioclimatica, pagina_modelagem
 
 # Page configuration
 st.set_page_config(
@@ -48,9 +48,7 @@ page = st.sidebar.radio(
         "1. Busca de Espécies (GBIF)",
         "2. Pseudo-ausências",
         "3. Análise Bioclimática",
-        "4. Statistical Analysis",
-        "5. ML Modeling",
-        "6. Outputs"
+        "4. Modelagem e Resultados"
     ]
 )
 
@@ -58,43 +56,76 @@ page = st.sidebar.radio(
 if page == "Home":
     st.header("Welcome to TAIPA SDM Platform")
     
+    # Overview
     st.markdown("""
     ### About TAIPA
+    TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) is an educational platform for Species Distribution Modeling (SDM). 
+    This tool guides users through the complete workflow of creating distribution models for any species.
     
-    TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) is an educational platform designed 
-    to teach Species Distribution Modeling (SDM) concepts and techniques.
-    
-    ### Platform Modules
-    
-    1. **Busca de Espécies**: Search and visualize species occurrences from GBIF
-    2. **Pseudo-ausências**: Generate pseudo-absence points for SDM
-    3. **Análise Bioclimática**: Analyze bioclimatic variables and their correlations
-    4. **Statistical Analysis Module**: Explore statistical methods for species distribution
-    5. **Machine Learning Modeling Module**: Apply ML algorithms to predict species distribution
-    6. **Outputs Module**: Generate and interpret distribution maps and reports
-    
-    ### Getting Started
-    
-    Use the sidebar to navigate through the different modules. Each module contains 
-    interactive tutorials, visualizations, and hands-on exercises.
-    
-    ### Phase 1 Features (MVP)
-    
-    - **GBIF Integration**: Search species occurrences with country filters
-    - **Interactive Maps**: Visualize occurrences with Folium
-    - **Environmental Variables**: Analyze 19 bioclimatic variables
-    - **Correlation Analysis**: Calculate VIF and correlation matrices
-    - **Data Export**: Download results in CSV format
+    ### 🚀 Workflow Overview
     """)
+    
+    # Workflow steps
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        **1. Species Data Collection**
+        - Search for species occurrences using GBIF
+        - Visualize distribution points on interactive maps
+        - Filter and clean occurrence data
+        
+        **2. Pseudo-absence Generation**
+        - Generate background points using buffer strategy
+        - Control sampling density and exclusion zones
+        - Balance presence/absence data
+        """)
+    
+    with col2:
+        st.markdown("""
+        **3. Bioclimatic Analysis**
+        - Extract environmental variables from WorldClim
+        - Analyze variable correlations and VIF
+        - Select optimal variables for modeling
+        
+        **4. Model Training & Evaluation**
+        - Train Random Forest models
+        - Cross-validation and performance metrics
+        - Save and load models for future use
+        """)
     
     # Quick stats
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Modules", "5")
+        st.metric("Total Modules", "4")
     with col2:
-        st.metric("Phase 1 Complete", "2/5")
+        st.metric("SDM Workflow", "Complete")
     with col3:
         st.metric("Platform Status", "Active")
+    
+    # Getting started
+    st.markdown("---")
+    st.subheader("🎯 Getting Started")
+    st.info("""
+    1. Begin with **Module 1** to search for species occurrence data
+    2. Follow the workflow sequentially through each module
+    3. Use the sidebar to navigate between modules
+    4. All data is automatically passed between modules
+    """)
+    
+    # Features
+    st.subheader("✨ Key Features")
+    features = {
+        "🌍 GBIF Integration": "Access global biodiversity data",
+        "🗺️ Interactive Maps": "Visualize and filter occurrence points",
+        "🌡️ Environmental Variables": "19 WorldClim bioclimatic layers",
+        "🤖 Machine Learning": "Random Forest with cross-validation",
+        "📊 Model Evaluation": "Comprehensive performance metrics",
+        "💾 Model Persistence": "Save and load trained models"
+    }
+    
+    for icon_title, description in features.items():
+        st.markdown(f"**{icon_title}**: {description}")
 
 elif page == "1. Busca de Espécies (GBIF)":
     pagina_busca_api.render_page()
@@ -105,49 +136,5 @@ elif page == "2. Pseudo-ausências":
 elif page == "3. Análise Bioclimática":
     pagina_analise_bioclimatica.render_page()
 
-elif page == "4. Statistical Analysis":
-    st.header("Module 4: Statistical Analysis for SDM")
-    st.info("Explore statistical methods used in species distribution modeling")
-    st.markdown("""
-    ### Topics Covered:
-    - Descriptive statistics
-    - Correlation analysis
-    - Variable selection
-    - Model validation
-    - Performance metrics
-    """)
-    st.warning("Module content to be implemented in Phase 2")
-
-elif page == "5. ML Modeling":
-    st.header("Module 5: Machine Learning for Species Distribution")
-    st.info("Apply machine learning algorithms to predict species distribution")
-    st.markdown("""
-    ### Topics Covered:
-    - Random Forest
-    - Support Vector Machines
-    - Neural Networks
-    - Ensemble methods
-    - Model optimization
-    """)
-    st.warning("Module content to be implemented in Phase 3")
-
-elif page == "7. Outputs":
-    st.header("Module 7: Generating and Interpreting Outputs")
-    st.info("Create distribution maps and interpret modeling results")
-    st.markdown("""
-    ### Topics Covered:
-    - Distribution map generation
-    - Uncertainty visualization
-    - Report generation
-    - Conservation applications
-    - Future projections
-    """)
-    st.warning("Module content to be implemented in Phase 3")
-
-# Footer
-st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #666;'>TAIPA SDM Platform © 2025 | "
-    "Developed for Environmental Research Education | Phase 1 MVP</div>",
-    unsafe_allow_html=True
-)
+elif page == "4. Modelagem e Resultados":
+    pagina_modelagem.render_page()

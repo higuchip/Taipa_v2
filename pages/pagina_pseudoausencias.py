@@ -151,6 +151,11 @@ def render_page():
             st.session_state['presence_points'] = presence_points
             st.session_state['map_generated'] = True
             
+            # Also store as DataFrame for easier processing
+            pseudo_absence_df = pd.DataFrame(pseudo_absences, columns=['decimalLatitude', 'decimalLongitude'])
+            pseudo_absence_df['type'] = 'absence'
+            st.session_state['pseudo_absence_data'] = pseudo_absence_df
+            
             # Display results
             st.success(f"✅ {len(pseudo_absences)} pseudo-ausências geradas!")
     

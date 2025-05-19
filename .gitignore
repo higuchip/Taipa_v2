@@ -2,6 +2,8 @@
 venv/
 env/
 ENV/
+.venv/
+*.venv
 
 # Python
 __pycache__/
@@ -26,13 +28,75 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+*.bak
 
 # Project specific
 *.log
-*.csv
-data/
-output/
 temp/
 temp_worldclim/
+*.csv
+output/
+outputs/
+
+# Model files
+models/
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+
+# Documentation
 conversation_summary.md
+
+# Streamlit
 .streamlit/secrets.toml
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Local configuration
+config.py
+config.json
+local_settings.py
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
+
+# Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Test artifacts
+htmlcov/
+.coverage
+.pytest_cache/
+.hypothesis/
+
+# Scripts
+activate.sh
+*.sh
+
+# Empty module directories
+
+
+# Test/Debug files
+check_worldclim_data.py
+
+# Backup files
+backup/
+*.backup
+*~
+
+# NOTE: The following are NOT in gitignore as they are essential:
+# - data/worldclim_brazil/*.tif (bioclimatic layers)
+# - data/worldclim_brazil/metadata.json (layer metadata)
+# - worldclim_preprocessor.py (needed for initial setup)
+# - .streamlit/config.toml (app configuration)
+conversation_summary.md
+.claude/settings.local.json

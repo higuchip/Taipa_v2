@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 def search_species(scientific_name: str, country: Optional[str] = None, limit: int = 100) -> Dict:
     """
-    Search for species occurrences in GBIF
+    Search for species occurrences in GBIF with pagination support
     
     Args:
         scientific_name: Scientific name of the species
@@ -16,22 +16,51 @@ def search_species(scientific_name: str, country: Optional[str] = None, limit: i
     """
     base_url = "https://api.gbif.org/v1/occurrence/search"
     
-    params = {
-        "scientificName": scientific_name,
-        "limit": limit,
-        "hasCoordinate": True,
-        "hasGeospatialIssue": False
+    # If limit > 300, use pagination to avoid slow requests
+    page_size = min(limit, 300)
+    all_results = []
+    offset = 0
+    
+    while len(all_results) < limit:
+        params = {
+            "scientificName": scientific_name,
+            "limit": page_size,
+            "offset": offset,
+            "hasCoordinate": True,
+            "hasGeospatialIssue": False
+        }
+        
+        if country:
+            params["country"] = country
+        
+        try:
+            response = requests.get(base_url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            
+            results = data.get("results", [])
+            if not results:
+                break
+                
+            all_results.extend(results)
+            
+            # Check if we've reached the end
+            if len(results) < page_size or len(all_results) >= limit:
+                break
+                
+            offset += page_size
+            
+        except requests.exceptions.RequestException as e:
+            return {"error": str(e), "results": all_results}
+    
+    # Trim to exact limit
+    all_results = all_results[:limit]
+    
+    return {
+        "results": all_results,
+        "endOfRecords": len(all_results) < limit,
+        "count": len(all_results)
     }
-    
-    if country:
-        params["country"] = country
-    
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        return {"error": str(e), "results": []}
 
 def get_species_key(scientific_name: str) -> Optional[int]:
     """

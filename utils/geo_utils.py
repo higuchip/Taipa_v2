@@ -1,23 +1,24 @@
 import folium
 import pandas as pd
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Union
 import requests
 from io import BytesIO
 import rasterio
-from rasterio.features import geometry_window
+from rasterio.io import MemoryFile
 from shapely.geometry import Point, box
 import numpy as np
+import os
 
 def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] = None) -> folium.Map:
     """
-    Create a Folium map with occurrence points
+    Create a Folium map with occurrence points and drawing tools
     
     Args:
         occurrences: List of occurrence dictionaries with lat/lon
         center: Optional center coordinates for the map
     
     Returns:
-        Folium map object
+        Folium map object with drawing capabilities
     """
     if not center and occurrences:
         # Calculate center from occurrences
@@ -32,6 +33,35 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     
     # Create base map
     m = folium.Map(location=center, zoom_start=5)
+    
+    # Add drawing tools
+    from folium.plugins import Draw
+    draw = Draw(
+        export=False,
+        position='topleft',
+        draw_options={
+            'polygon': {
+                'allowIntersection': False,
+                'shapeOptions': {
+                    'color': 'red',
+                    'fillColor': 'red', 
+                    'fillOpacity': 0.2
+                }
+            },
+            'rectangle': {
+                'shapeOptions': {
+                    'color': 'red',
+                    'fillColor': 'red',
+                    'fillOpacity': 0.2
+                }
+            },
+            'polyline': False,
+            'circle': False,
+            'marker': False,
+            'circlemarker': False,
+        }
+    )
+    draw.add_to(m)
     
     # Add occurrence markers as simple blue circles
     for occ in occurrences:
@@ -60,24 +90,70 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     
     return m
 
-def extract_raster_values(points: List[Tuple[float, float]], raster_path: str) -> List[float]:
+def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray], 
+                         raster_paths: Union[str, List[str]]) -> Union[List[float], Dict[str, List[float]]]:
     """
-    Extract raster values at given points (placeholder for MVP)
+    Extract raster values at given points
     
     Args:
-        points: List of (lat, lon) tuples
-        raster_path: Path to raster file
+        points: List of (lat, lon) tuples or numpy array
+        raster_paths: Path to raster file or list of paths
     
     Returns:
-        List of extracted values
+        List of extracted values or dict of values per layer
     """
-    # Placeholder implementation for MVP
-    # In production, this would use rasterio to extract actual values
-    values = []
-    for point in points:
-        # Simulate extracted values
-        values.append(np.random.uniform(-5, 35))  # Temperature-like values
-    return values
+    # Convert to list of tuples if numpy array
+    if isinstance(points, np.ndarray):
+        if points.shape[1] == 2:
+            # Assume columns are lon, lat
+            points = [(row[1], row[0]) for row in points]
+        else:
+            raise ValueError("Array must have 2 columns (longitude, latitude)")
+    
+    # Handle single raster or multiple rasters
+    if isinstance(raster_paths, str):
+        raster_paths = [raster_paths]
+        return_dict = False
+    else:
+        return_dict = True
+    
+    results = {}
+    
+    for raster_path in raster_paths:
+        values = []
+        
+        # Check if raster file exists
+        if os.path.exists(raster_path):
+            try:
+                with rasterio.open(raster_path) as src:
+                    # Extract values for each point
+                    for lat, lon in points:
+                        # Sample the raster at the point location
+                        # rasterio expects (lon, lat) order
+                        sample = list(src.sample([(lon, lat)]))[0]
+                        # Get first band value
+                        value = float(sample[0])
+                        
+                        # Check for nodata values
+                        if src.nodata is not None and value == src.nodata:
+                            value = np.nan
+                            
+                        values.append(value)
+                        
+            except Exception as e:
+                print(f"Error reading {raster_path}: {str(e)}")
+                # Fill with NaN if error
+                values = [np.nan] * len(points)
+        else:
+            print(f"Warning: Raster file not found: {raster_path}")
+            # Fill with NaN if file not found
+            values = [np.nan] * len(points)
+        
+        # Store results using filename without extension as key
+        layer_name = os.path.basename(raster_path).replace('.tif', '')
+        results[layer_name] = values
+    
+    return results if return_dict else results[list(results.keys())[0]]
 
 def calculate_buffer_area(point: Tuple[float, float], buffer_km: float) -> Dict:
     """

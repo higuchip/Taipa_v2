@@ -1,0 +1,84 @@
+{
+  "layers": {
+    "bio1": {
+      "name": "Annual Mean Temperature",
+      "unit": "\u00b0C * 10"
+    },
+    "bio2": {
+      "name": "Mean Diurnal Range",
+      "unit": "\u00b0C * 10"
+    },
+    "bio3": {
+      "name": "Isothermality",
+      "unit": "%"
+    },
+    "bio4": {
+      "name": "Temperature Seasonality",
+      "unit": "standard deviation * 100"
+    },
+    "bio5": {
+      "name": "Max Temperature of Warmest Month",
+      "unit": "\u00b0C * 10"
+    },
+    "bio6": {
+      "name": "Min Temperature of Coldest Month",
+      "unit": "\u00b0C * 10"
+    },
+    "bio7": {
+      "name": "Temperature Annual Range",
+      "unit": "\u00b0C * 10"
+    },
+    "bio8": {
+      "name": "Mean Temperature of Wettest Quarter",
+      "unit": "\u00b0C * 10"
+    },
+    "bio9": {
+      "name": "Mean Temperature of Driest Quarter",
+      "unit": "\u00b0C * 10"
+    },
+    "bio10": {
+      "name": "Mean Temperature of Warmest Quarter",
+      "unit": "\u00b0C * 10"
+    },
+    "bio11": {
+      "name": "Mean Temperature of Coldest Quarter",
+      "unit": "\u00b0C * 10"
+    },
+    "bio12": {
+      "name": "Annual Precipitation",
+      "unit": "mm"
+    },
+    "bio13": {
+      "name": "Precipitation of Wettest Month",
+      "unit": "mm"
+    },
+    "bio14": {
+      "name": "Precipitation of Driest Month",
+      "unit": "mm"
+    },
+    "bio15": {
+      "name": "Precipitation Seasonality",
+      "unit": "coefficient of variation"
+    },
+    "bio16": {
+      "name": "Precipitation of Wettest Quarter",
+      "unit": "mm"
+    },
+    "bio17": {
+      "name": "Precipitation of Driest Quarter",
+      "unit": "mm"
+    },
+    "bio18": {
+      "name": "Precipitation of Warmest Quarter",
+      "unit": "mm"
+    },
+    "bio19": {
+      "name": "Precipitation of Coldest Quarter",
+      "unit": "mm"
+    }
+  },
+  "resolution": "2.5 minutes",
+  "extent": "Brazil",
+  "source": "WorldClim v2.1",
+  "preprocessed_date": "2025-05-18T18:12:51.960749"
+}

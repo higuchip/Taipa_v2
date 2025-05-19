@@ -38,16 +38,28 @@ def render_page():
                 st.write(f"  - {f.name}")
         return
     
-    # Check for occurrence data
-    use_occurrence_data = False
-    if 'occurrence_data' in st.session_state:
-        use_occurrence_data = st.checkbox(
-            "Usar dados de ocorrência da busca GBIF",
-            value=True,
-            help="Analisa as variáveis bioclimáticas nos pontos de ocorrência"
-        )
+    # Check for available data
+    has_occurrence_data = 'occurrence_data' in st.session_state
+    has_pseudo_absence_data = 'pseudo_absence_data' in st.session_state
+    
+    if has_occurrence_data and has_pseudo_absence_data:
+        st.markdown("### Dados Disponíveis")
+        n_occurrences = len(st.session_state['occurrence_data'])
+        n_pseudo_absences = len(st.session_state['pseudo_absence_data'])
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Ocorrências GBIF", n_occurrences)
+        with col2:
+            st.metric("Pseudo-ausências", n_pseudo_absences)
+        with col3:
+            st.metric("Total de pontos", n_occurrences + n_pseudo_absences)
+    elif has_occurrence_data:
+        st.warning("⚠️ Apenas dados de ocorrência disponíveis. Gere pseudo-ausências no módulo anterior para uma análise completa.")
+    elif has_pseudo_absence_data:
+        st.warning("⚠️ Apenas dados de pseudo-ausências disponíveis. Faça uma busca GBIF para obter dados de ocorrência.")
     else:
-        st.info("💡 Faça uma busca de espécies no módulo GBIF primeiro para analisar variáveis bioclimáticas em pontos reais de ocorrência.")
+        st.info("💡 Faça uma busca de espécies no módulo GBIF e gere pseudo-ausências para analisar variáveis bioclimáticas.")
     
     # Variable selection
     st.subheader("1. Seleção de Variáveis")
@@ -100,19 +112,34 @@ def render_page():
     
     df_analysis = None
     
-    if use_occurrence_data and 'occurrence_data' in st.session_state:
-        # Extract values at occurrence points
+    if (has_occurrence_data and has_pseudo_absence_data) and selected_vars:
+        # Combine both datasets
+        points = []
+        point_types = []  # To track point type (presence/absence)
+        
+        # Add occurrence points
         occurrence_data = st.session_state['occurrence_data']
-        points = [(occ['lat'], occ['lon']) for occ in occurrence_data 
+        occurrence_points = [(occ['lat'], occ['lon']) for occ in occurrence_data 
                   if occ.get('lat') and occ.get('lon')]
+        points.extend(occurrence_points)
+        point_types.extend(['presence'] * len(occurrence_points))
         
-        st.success(f"✅ {len(points)} pontos de ocorrência disponíveis da busca GBIF")
+        # Add pseudo-absence points
+        pseudo_absence_data = st.session_state['pseudo_absence_data']
+        absence_points = [(row['decimalLatitude'], row['decimalLongitude']) 
+                  for _, row in pseudo_absence_data.iterrows()]
+        points.extend(absence_points)
+        point_types.extend(['absence'] * len(absence_points))
         
-        if st.button("Extrair Valores nos Pontos de Ocorrência", type="primary"):
+        if st.button("Extrair Valores Bioclimáticos", type="primary"):
             with st.spinner("Extraindo valores bioclimáticos..."):
                 df_analysis = analyzer.extract_values_at_points(points, selected_vars)
+                # Add point type column
+                df_analysis['point_type'] = point_types
                 st.session_state['bioclim_data'] = df_analysis
                 st.success(f"Valores extraídos para {len(points)} pontos!")
+    elif (has_occurrence_data or has_pseudo_absence_data) and selected_vars:
+        st.warning("⚠️ São necessários tanto dados de ocorrência quanto pseudo-ausências para realizar a análise completa.")
     else:
         # Generate sample data for demonstration
         st.warning("⚠️ Nenhum dado de ocorrência disponível. Use dados de exemplo para demonstração.")
@@ -147,8 +174,20 @@ def render_page():
         
         # Display data preview
         with st.expander("Visualizar Dados", expanded=False):
-            st.dataframe(df_analysis.head(10))
+            display_df = df_analysis.copy()
+            # Move point_type column to the beginning if it exists
+            if 'point_type' in display_df.columns:
+                cols = ['point_type'] + [col for col in display_df.columns if col != 'point_type']
+                display_df = display_df[cols]
+            st.dataframe(display_df.head(10))
             st.write(f"Shape: {df_analysis.shape}")
+            
+            # Show distribution if we have both types
+            if 'point_type' in df_analysis.columns and df_analysis['point_type'].nunique() > 1:
+                st.write("Distribuição dos pontos:")
+                point_counts = df_analysis['point_type'].value_counts()
+                for ptype, count in point_counts.items():
+                    st.write(f"- {ptype}: {count} pontos")
         
         # Correlation Analysis
         st.subheader("4. Análise de Correlação")
@@ -267,10 +306,59 @@ def render_page():
             )
         
         with col2:
-            if st.button("Visualizar Layer"):
+            overlay_points = st.checkbox(
+                "Sobrepor pontos",
+                value=True,
+                help="Mostrar pontos de ocorrência e pseudo-ausências sobre o layer"
+            )
+        
+        # Additional visualization options
+        if overlay_points:
+            col1b, col2b, col3b = st.columns(3)
+            with col1b:
+                point_size = st.slider("Tamanho dos pontos", 10, 50, 20)
+            with col2b:
+                point_alpha = st.slider("Transparência", 0.1, 1.0, 0.7)
+            with col3b:
+                legend_position = st.selectbox("Posição da legenda", 
+                                             ['upper right', 'upper left', 'lower right', 'lower left'],
+                                             index=0)
+        
+        if st.button("Visualizar Layer", type="primary"):
                 with st.spinner("Gerando visualização..."):
                     try:
                         fig_layer = analyzer.visualize_layer(selected_layer, cmap=cmap)
+                        
+                        # Add occurrence and pseudo-absence points if requested
+                        if overlay_points and has_occurrence_data and has_pseudo_absence_data:
+                            # Get current axes
+                            ax = fig_layer.gca()
+                            
+                            # Get visualization options with defaults
+                            ps = point_size if 'point_size' in locals() else 20
+                            pa = point_alpha if 'point_alpha' in locals() else 0.7
+                            lp = legend_position if 'legend_position' in locals() else 'upper right'
+                            
+                            # Plot occurrence points
+                            occurrence_data = st.session_state['occurrence_data']
+                            occ_lons = [occ['lon'] for occ in occurrence_data if occ.get('lon')]
+                            occ_lats = [occ['lat'] for occ in occurrence_data if occ.get('lat')]
+                            ax.scatter(occ_lons, occ_lats, c='blue', s=ps, alpha=pa, 
+                                     edgecolors='white', linewidth=0.5, label='Ocorrências')
+                            
+                            # Plot pseudo-absence points
+                            pseudo_absence_data = st.session_state['pseudo_absence_data']
+                            abs_lons = pseudo_absence_data['decimalLongitude'].tolist()
+                            abs_lats = pseudo_absence_data['decimalLatitude'].tolist()
+                            ax.scatter(abs_lons, abs_lats, c='red', s=ps, alpha=pa,
+                                     edgecolors='white', linewidth=0.5, label='Pseudo-ausências')
+                            
+                            # Add legend
+                            ax.legend(loc=lp, framealpha=0.9, fontsize=8)
+                            
+                            # Update the plot
+                            fig_layer.tight_layout()
+                        
                         st.pyplot(fig_layer)
                     except Exception as e:
                         st.error(f"Erro ao visualizar layer: {e}")
@@ -301,7 +389,11 @@ def render_page():
         with col3:
             if 'bioclim_data' in st.session_state:
                 # Save only selected variables
-                selected_data = df_analysis[['latitude', 'longitude'] + selected_final]
+                cols_to_save = ['latitude', 'longitude']
+                if 'point_type' in df_analysis.columns:
+                    cols_to_save.append('point_type')
+                cols_to_save.extend(selected_final)
+                selected_data = df_analysis[cols_to_save]
                 csv_selected = selected_data.to_csv(index=False)
                 st.download_button(
                     label="Download Dados Selecionados",
