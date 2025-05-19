@@ -44,24 +44,149 @@ st.markdown("""
 st.markdown('<h1 class="main-header">🌿 TAIPA SDM</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-header">Plataforma Educacional de Modelagem de Distribuição de Espécies</p>', unsafe_allow_html=True)
 
+# Função helper para criar tooltips
+def criar_tooltip(texto):
+    return f'<span title="{texto}">ℹ️</span>'
+
+# Função para preservar o estado entre navegações
+def preservar_estado():
+    # Lista de chaves importantes que devem ser preservadas
+    chaves_importantes = [
+        'species_name', 'occurrence_data', 'n_occurrences', 'original_occurrences',
+        'gbif_data', 'pseudo_absences', 'selected_vars', 'bioclim_data',
+        'model_trained', 'trained_model', 'model_results', 'model_metrics',
+        'last_prediction', 'projection_threshold', 'future_projection_done',
+        'projection_data', 'binary_map', 'future_prediction'
+    ]
+    
+    # Garantir que o estado persista
+    for chave in chaves_importantes:
+        if chave in st.session_state:
+            # Apenas preserva, não sobrescreve se já existe
+            pass
+
+# Função para calcular progresso
+def calcular_progresso():
+    etapas = {
+        'especies_buscadas': st.session_state.get('species_name', None) is not None and 
+                           st.session_state.get('occurrence_data', None) is not None,
+        'pseudoausencias_geradas': st.session_state.get('pseudo_absences', None) is not None,
+        'analise_bioclimatica': st.session_state.get('selected_vars', None) is not None,
+        'modelo_treinado': st.session_state.get('model_trained', False),
+        'projecao_espacial': st.session_state.get('last_prediction', None) is not None,
+        'projecao_futura': st.session_state.get('future_projection_done', False)
+    }
+    
+    completas = sum(etapas.values())
+    total = len(etapas)
+    
+    return completas, total, etapas
+
+# Inicializar variáveis de sessão se necessário
+if 'navigation_state' not in st.session_state:
+    st.session_state.navigation_state = {}
+
+# Preservar estado entre navegações
+preservar_estado()
+
 # Navegação na barra lateral
 st.sidebar.title("Navegação")
-pagina = st.sidebar.radio(
+
+# Exibir progresso
+completas, total, etapas = calcular_progresso()
+progresso = completas / total if total > 0 else 0
+
+st.sidebar.markdown("### 📊 Seu Progresso")
+st.sidebar.progress(progresso)
+st.sidebar.caption(f"{completas} de {total} etapas concluídas")
+
+# Debug - Mostrar estado atual (apenas em desenvolvimento)
+with st.sidebar.expander("🔧 Debug - Estado Atual"):
+    st.write("Espécie:", st.session_state.get('species_name', 'Não definida'))
+    st.write("Ocorrências:", st.session_state.get('n_occurrences', 0))
+    st.write("Pseudo-ausências:", 'Sim' if 'pseudo_absences' in st.session_state else 'Não')
+    st.write("Modelo treinado:", st.session_state.get('model_trained', False))
+
+# Mostrar checkmarks para etapas completas
+st.sidebar.markdown("### ✅ Etapas Completas")
+etapas_nomes = {
+    'especies_buscadas': '1. Busca de Espécies',
+    'pseudoausencias_geradas': '2. Pseudo-ausências',
+    'analise_bioclimatica': '3. Análise Bioclimática',
+    'modelo_treinado': '4. Modelagem',
+    'projecao_espacial': '5. Projeção Espacial',
+    'projecao_futura': '6. Projeção Futura'
+}
+
+for etapa, completa in etapas.items():
+    if completa:
+        st.sidebar.markdown(f"✅ {etapas_nomes[etapa]}")
+    else:
+        st.sidebar.markdown(f"⭕ {etapas_nomes[etapa]}")
+
+st.sidebar.markdown("---")
+
+# Criar labels para o menu com indicadores de status
+menu_labels = ["Início"]
+status_icons = {
+    True: "✅",  # Completo
+    False: "⭕"  # Pendente
+}
+
+# Adicionar status aos labels do menu
+modulos = [
+    ("1. Busca de Espécies (GBIF)", etapas['especies_buscadas']),
+    ("2. Pseudo-ausências", etapas['pseudoausencias_geradas']),
+    ("3. Análise Bioclimática", etapas['analise_bioclimatica']),
+    ("4. Modelagem e Resultados", etapas['modelo_treinado']),
+    ("5. Projeção Espacial", etapas['projecao_espacial']),
+    ("6. Projeção Futura", etapas['projecao_futura'])
+]
+
+for nome, completo in modulos:
+    menu_labels.append(f"{status_icons[completo]} {nome}")
+
+pagina_selecionada = st.sidebar.radio(
     "Selecione o Módulo",
-    [
-        "Início",
-        "1. Busca de Espécies (GBIF)",
-        "2. Pseudo-ausências",
-        "3. Análise Bioclimática",
-        "4. Modelagem e Resultados",
-        "5. Projeção Espacial",
-        "6. Projeção Futura"
-    ]
+    menu_labels
 )
+
+# Converter de volta para o nome original do módulo
+if pagina_selecionada != "Início":
+    pagina = pagina_selecionada[2:]  # Remove o ícone e espaço
+else:
+    pagina = pagina_selecionada
 
 # Roteamento do conteúdo da página
 if pagina == "Início":
     st.header("Bem-vindo à Plataforma TAIPA SDM")
+    
+    # Mensagem personalizada baseada no progresso
+    if completas == 0:
+        st.info("""
+        🌱 **Primeira vez aqui?**
+        
+        Comece pela Busca de Espécies (Módulo 1) para iniciar sua jornada no mundo da Modelagem de Distribuição de Espécies!
+        """)
+    elif completas == total:
+        st.success("""
+        🎉 **Parabéns! Você completou todos os módulos!**
+        
+        Você agora domina o fluxo completo de SDM. Que tal experimentar com uma nova espécie?
+        """)
+    else:
+        proxima_etapa = None
+        for etapa, completa in etapas.items():
+            if not completa:
+                proxima_etapa = etapas_nomes[etapa]
+                break
+        
+        st.info(f"""
+        🚀 **Continue sua jornada!**
+        
+        Você já completou {completas} de {total} etapas. 
+        Próximo passo: **{proxima_etapa}**
+        """)
     
     # Visão geral
     st.markdown("""

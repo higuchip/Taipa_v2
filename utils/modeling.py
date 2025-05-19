@@ -26,6 +26,20 @@ class SDMModel:
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
     
+    def __getstate__(self):
+        """Prepare state for pickling"""
+        state = self.__dict__.copy()
+        # Remove logger to avoid serialization issues
+        if 'logger' in state:
+            del state['logger']
+        return state
+    
+    def __setstate__(self, state):
+        """Restore state from pickling"""
+        self.__dict__.update(state)
+        # Recreate logger after unpickling
+        self.logger = logging.getLogger(__name__)
+    
     def create_pipeline(self, n_estimators: int = 100, max_depth: Optional[int] = None,
                        min_samples_split: int = 2, min_samples_leaf: int = 1) -> Pipeline:
         """Create scikit-learn pipeline with preprocessing and Random Forest"""

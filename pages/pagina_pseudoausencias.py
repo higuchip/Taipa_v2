@@ -87,6 +87,23 @@ def render_page():
     # Check for presence data in session state
     if 'occurrence_data' not in st.session_state:
         st.warning("⚠️ Nenhum dado de presença disponível. Por favor, busque dados de ocorrência primeiro.")
+        
+        # Mostrar status do progresso
+        st.error("""
+        ❌ **Pré-requisito não atendido**
+        
+        Para gerar pseudo-ausências, você precisa primeiro:
+        1. Buscar uma espécie no GBIF
+        2. Confirmar os dados de ocorrência
+        
+        **Status atual:**
+        - Espécie selecionada: {}
+        - Ocorrências disponíveis: {}
+        """.format(
+            st.session_state.get('species_name', 'Nenhuma'),
+            st.session_state.get('n_occurrences', 0)
+        ))
+        
         if st.button("Ir para Busca de Espécies"):
             st.switch_page("pages/pagina_busca_api.py")
         return
@@ -158,6 +175,16 @@ def render_page():
             
             # Display results
             st.success(f"✅ {len(pseudo_absences)} pseudo-ausências geradas!")
+            st.balloons()
+            
+            # Indicador de conclusão
+            st.info("""
+            ✅ **Etapa Concluída!**
+            
+            Você gerou {} pseudo-ausências para a espécie {}.
+            
+            **Próximo passo:** Vá para o Módulo 3 - Análise Bioclimática
+            """.format(len(pseudo_absences), species_name))
     
     # Display results if available
     if 'pseudo_absences' in st.session_state and st.session_state.get('map_generated', False):
@@ -244,6 +271,14 @@ def render_page():
             file_name=f"{species_name.replace(' ', '_')}_sdm_data.csv",
             mime="text/csv"
         )
+        
+        # Indicador de progresso
+        if st.session_state.get('pseudo_absences'):
+            st.success("""
+            ✅ **Pseudo-ausências prontas!**
+            
+            Você pode prosseguir para a Análise Bioclimática.
+            """)
     
     # Information section
     with st.expander("ℹ Sobre Pseudo-ausências em SDM"):

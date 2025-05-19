@@ -136,9 +136,9 @@ def render_page():
                         brasil_gdf = brasil_gdf.to_crs('EPSG:4326')
                     
                     # Get spatial reference from first file
-                    first_var = selected_vars[0]
+                    first_var = variaveis_selecionadas[0]
                     var_num = int(first_var.replace('bio', ''))
-                    ref_file = future_climate_path / f"wc2.1_2.5m_bioc_MPI-ESM1-2-HR_{scenario_code}_{period_code}_bio{var_num}.tif"
+                    ref_file = caminho_clima_futuro / f"wc2.1_2.5m_bioc_MPI-ESM1-2-HR_{codigo_cenario}_{codigo_periodo}_bio{var_num}.tif"
                     
                     if not ref_file.exists():
                         st.error(f"Arquivo de referência não encontrado: {ref_file}")
@@ -147,13 +147,13 @@ def render_page():
                     # Process Brazil boundary for masking
                     with rasterio.open(ref_file) as src:
                         # Reproject Brazil boundary to match raster CRS if needed
-                        if brazil_gdf.crs != src.crs:
-                            brazil_gdf_proj = brazil_gdf.to_crs(src.crs)
+                        if brasil_gdf.crs != src.crs:
+                            brasil_gdf_proj = brasil_gdf.to_crs(src.crs)
                         else:
-                            brazil_gdf_proj = brazil_gdf
+                            brasil_gdf_proj = brasil_gdf
                         
                         # Get the geometry for masking
-                        brazil_geom = [brazil_gdf_proj.geometry[0]]
+                        brazil_geom = [brasil_gdf_proj.geometry[0]]
                         
                         # Get masked bounds and transform for Brazil
                         out_image, out_transform = mask(src, brazil_geom, crop=True)
@@ -173,14 +173,14 @@ def render_page():
                         bounds = rasterio.transform.array_bounds(height, width, transform)
                     
                     # Create arrays for future climate data
-                    n_vars = len(selected_vars)
+                    n_vars = len(variaveis_selecionadas)
                     bio_data_future = np.zeros((n_vars, height, width))
                     
                     # Load selected bioclimatic variables with Brazil mask
                     progress_bar = st.progress(0)
-                    for i, var in enumerate(selected_vars):
+                    for i, var in enumerate(variaveis_selecionadas):
                         var_num = int(var.replace('bio', ''))
-                        tif_path = future_climate_path / f"wc2.1_2.5m_bioc_MPI-ESM1-2-HR_{scenario_code}_{period_code}_bio{var_num}.tif"
+                        tif_path = caminho_clima_futuro / f"wc2.1_2.5m_bioc_MPI-ESM1-2-HR_{codigo_cenario}_{codigo_periodo}_bio{var_num}.tif"
                         
                         if not tif_path.exists():
                             st.error(f"Arquivo não encontrado: {tif_path}")
@@ -209,7 +209,7 @@ def render_page():
                     
                     # Make predictions
                     st.info("Gerando predições para clima futuro...")
-                    predictions_future = model.predict_proba(X_valid)[:, 1]
+                    predictions_future = modelo.predict_proba(X_valid)[:, 1]
                     
                     # Create prediction map
                     prediction_map_future = np.full(X_future.shape[0], np.nan)
@@ -283,8 +283,8 @@ def render_page():
                             
                             # Add Brazil boundary
                             fig_current_binary.add_trace(go.Scattergl(
-                                x=brazil_x,
-                                y=brazil_y,
+                                x=brasil_x,
+                                y=brasil_y,
                                 mode='lines',
                                 line=dict(color='black', width=2),
                                 showlegend=False,
@@ -301,7 +301,7 @@ def render_page():
                             st.plotly_chart(fig_current_binary, use_container_width=True)
                         
                         with col2:
-                            st.markdown(f"#### Distribuição Futura ({period_code})")
+                            st.markdown(f"#### Distribuição Futura ({codigo_periodo})")
                             fig_future_binary = go.Figure()
                             
                             # Add heatmap
@@ -316,8 +316,8 @@ def render_page():
                             
                             # Add Brazil boundary
                             fig_future_binary.add_trace(go.Scattergl(
-                                x=brazil_x,
-                                y=brazil_y,
+                                x=brasil_x,
+                                y=brasil_y,
                                 mode='lines',
                                 line=dict(color='black', width=2),
                                 showlegend=False,
@@ -325,7 +325,7 @@ def render_page():
                             ))
                             
                             fig_future_binary.update_layout(
-                                title=f"{scenario} - {period} (threshold: {threshold:.3f})",
+                                title=f"{cenario} - {periodo} (threshold: {threshold:.3f})",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
                                 height=400,
@@ -341,7 +341,7 @@ def render_page():
                         with col1:
                             st.markdown("#### Probabilidade Atual")
                             fig_current_prob = go.Figure(data=go.Heatmap(
-                                z=current_prediction['map'][::-1],
+                                z=previsao_atual['map'][::-1],
                                 colorscale='Viridis',
                                 showscale=True,
                                 colorbar=dict(title="Probabilidade")
@@ -354,8 +354,8 @@ def render_page():
                             )
                             # Add Brazil boundary
                             fig_current_prob.add_trace(go.Scattergl(
-                                x=brazil_x,
-                                y=brazil_y,
+                                x=brasil_x,
+                                y=brasil_y,
                                 mode='lines',
                                 line=dict(color='black', width=2),
                                 showlegend=False,
@@ -364,7 +364,7 @@ def render_page():
                             st.plotly_chart(fig_current_prob, use_container_width=True)
                         
                         with col2:
-                            st.markdown(f"#### Probabilidade Futura ({period_code})")
+                            st.markdown(f"#### Probabilidade Futura ({codigo_periodo})")
                             fig_future_prob = go.Figure(data=go.Heatmap(
                                 z=prediction_map_future[::-1],
                                 colorscale='Viridis',
@@ -372,15 +372,15 @@ def render_page():
                                 colorbar=dict(title="Probabilidade")
                             ))
                             fig_future_prob.update_layout(
-                                title=f"{scenario} - {period}",
+                                title=f"{cenario} - {periodo}",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
                                 height=400
                             )
                             # Add Brazil boundary
                             fig_future_prob.add_trace(go.Scattergl(
-                                x=brazil_x,
-                                y=brazil_y,
+                                x=brasil_x,
+                                y=brasil_y,
                                 mode='lines',
                                 line=dict(color='black', width=2),
                                 showlegend=False,
@@ -424,8 +424,8 @@ def render_page():
                         )
                         # Add Brazil boundary
                         fig_change.add_trace(go.Scattergl(
-                            x=brazil_x,
-                            y=brazil_y,
+                            x=brasil_x,
+                            y=brasil_y,
                             mode='lines',
                             line=dict(color='black', width=2),
                             showlegend=False,
@@ -539,8 +539,8 @@ def render_page():
                             'probability_map': prediction_map_future,
                             'binary_map': binary_map_future,
                             'threshold': threshold,
-                            'scenario': scenario,
-                            'period': period,
+                            'scenario': cenario,
+                            'period': periodo,
                             'bounds': bounds,
                             'crs': crs,
                             'transform': transform
@@ -567,12 +567,12 @@ def render_page():
                             im = ax.imshow(binary_map_future, cmap=cmap, extent=[bounds[0], bounds[2], bounds[1], bounds[3]], origin='upper')
                             
                             # Add Brazil boundary
-                            ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                            ax.plot(brasil_x, brasil_y, 'k-', linewidth=2)
                             
                             # Add labels and title
                             ax.set_xlabel('Longitude')
                             ax.set_ylabel('Latitude')
-                            ax.set_title(f'Distribuição Futura - {scenario} ({period})')
+                            ax.set_title(f'Distribuição Futura - {cenario} ({periodo})')
                             
                             # Add colorbar
                             cbar = plt.colorbar(im, ax=ax, ticks=[0, 1])
@@ -588,7 +588,7 @@ def render_page():
                             st.download_button(
                                 label="⬇️ Mapa Binário",
                                 data=binary_jpeg_buffer,
-                                file_name=f"future_binary_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                file_name=f"future_binary_{codigo_cenario}_{codigo_periodo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
                                 mime="image/jpeg",
                                 key="download_binary_jpeg"
                             )
@@ -604,12 +604,12 @@ def render_page():
                                 im = ax.imshow(prediction_map_future, cmap='viridis', extent=[bounds[0], bounds[2], bounds[1], bounds[3]], vmin=0, vmax=1, origin='upper')
                                 
                                 # Add Brazil boundary
-                                ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                                ax.plot(brasil_x, brasil_y, 'k-', linewidth=2)
                                 
                                 # Add labels and title
                                 ax.set_xlabel('Longitude')
                                 ax.set_ylabel('Latitude')
-                                ax.set_title(f'Probabilidade de Ocorrência Futura - {scenario} ({period})')
+                                ax.set_title(f'Probabilidade de Ocorrência Futura - {cenario} ({periodo})')
                                 
                                 # Add colorbar
                                 cbar = plt.colorbar(im, ax=ax)
@@ -624,7 +624,7 @@ def render_page():
                                 st.download_button(
                                     label="⬇️ Mapa de Probabilidade",
                                     data=prob_jpeg_buffer,
-                                    file_name=f"future_probability_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                    file_name=f"future_probability_{codigo_cenario}_{codigo_periodo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
                                     mime="image/jpeg",
                                     key="download_prob_jpeg"
                                 )
@@ -644,12 +644,12 @@ def render_page():
                                 im = ax.imshow(change_map, cmap=cmap, norm=norm, extent=[bounds[0], bounds[2], bounds[1], bounds[3]], origin='upper')
                                 
                                 # Add Brazil boundary
-                                ax.plot(brazil_x, brazil_y, 'k-', linewidth=2)
+                                ax.plot(brasil_x, brasil_y, 'k-', linewidth=2)
                                 
                                 # Add labels and title
                                 ax.set_xlabel('Longitude')
                                 ax.set_ylabel('Latitude')
-                                ax.set_title(f'Mudança na Distribuição - {scenario} ({period})')
+                                ax.set_title(f'Mudança na Distribuição - {cenario} ({periodo})')
                                 
                                 # Add colorbar with custom labels
                                 cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1])
@@ -665,7 +665,7 @@ def render_page():
                                 st.download_button(
                                     label="⬇️ Mapa de Mudanças",
                                     data=change_jpeg_buffer,
-                                    file_name=f"change_{scenario_code}_{period_code}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
+                                    file_name=f"change_{codigo_cenario}_{codigo_periodo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg",
                                     mime="image/jpeg",
                                     key="download_change_jpeg"
                                 )

@@ -216,6 +216,19 @@ def render_page():
                 file_name=f"{species_name.replace(' ', '_')}_occurrences_BR.csv",
                 mime="text/csv"
             )
+            
+        # Indicador de conclusão da etapa
+        if st.session_state.get('species_name') and st.session_state.get('occurrence_data'):
+            st.success("""
+            ✅ **Etapa Concluída!**
+            
+            Você tem {} ocorrências da espécie {} prontas para análise.
+            
+            **Próximo passo:** Vá para o Módulo 2 - Pseudo-ausências
+            """.format(
+                st.session_state.get('n_occurrences', 0),
+                st.session_state.get('species_name', '')
+            ))
     
     # Information section
     with st.expander("ℹ Sobre esta página"):

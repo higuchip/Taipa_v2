@@ -665,12 +665,13 @@ def render_page():
             
             # Prepare model data
             try:
-                import pickle
+                import joblib
                 import io
                 
-                # Serialize model to bytes
+                # Serialize model to bytes using joblib (more robust than pickle)
                 model_buffer = io.BytesIO()
-                pickle.dump(st.session_state['trained_model'], model_buffer)
+                joblib.dump(st.session_state['trained_model'], model_buffer)
+                model_buffer.seek(0)
                 model_data = model_buffer.getvalue()
                 
                 # Prepare metadata
@@ -733,8 +734,8 @@ def render_page():
             if st.button("Carregar Modelo", type="primary"):
                 try:
                     # Load model from uploaded file
-                    import pickle
-                    loaded_model = pickle.load(uploaded_model)
+                    import joblib
+                    loaded_model = joblib.load(uploaded_model)
                     
                     # Store loaded model in session state
                     st.session_state['loaded_model'] = loaded_model
