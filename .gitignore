@@ -100,3 +100,5 @@ backup/
 # - .streamlit/config.toml (app configuration)
 conversation_summary.md
 .claude/settings.local.json
+scripts/clean_project.py
+DEPLOY.md
