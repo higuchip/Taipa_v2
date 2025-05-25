@@ -275,7 +275,35 @@ def render_page():
         X = bioclim_data[selected_vars]
         
         st.write(f"Tamanho do conjunto de dados: {X.shape}")
-        st.write(f"Distribuição das classes: Presença={y.sum()}, Ausência={len(y)-y.sum()}")
+        
+        # Check class distribution
+        n_presence = y.sum()
+        n_absence = len(y) - n_presence
+        
+        st.write(f"Distribuição das classes: Presença={n_presence}, Ausência={n_absence}")
+        
+        # Verify minimum requirements
+        if n_presence < 2 or n_absence < 2:
+            st.error(f"""
+            ⚠️ **Erro**: Dados insuficientes para modelagem!
+            
+            **Mínimo necessário:** 2 amostras de cada classe
+            **Atual:** {n_presence} presenças, {n_absence} ausências
+            
+            **Soluções:**
+            1. Adicione mais pontos de ocorrência se houver poucas presenças
+            2. Gere mais pseudo-ausências se houver poucas ausências
+            3. Verifique se os dados foram processados corretamente
+            """)
+            return
+        
+        if n_presence < 10 or n_absence < 10:
+            st.warning("""
+            ⚠️ **Aviso**: Poucos dados para um modelo robusto!
+            
+            Recomenda-se ter pelo menos 10 amostras de cada classe.
+            Os resultados podem não ser confiáveis com poucos dados.
+            """)
         
         # Store prepared data
         st.session_state['X_model'] = X
@@ -311,6 +339,40 @@ def render_page():
         
         X = st.session_state['X_model']
         y = st.session_state['y_model']
+        
+        # Check class balance
+        unique_classes, class_counts = np.unique(y, return_counts=True)
+        st.write("Distribuição das classes:")
+        for cls, count in zip(unique_classes, class_counts):
+            class_name = "Presença" if cls == 1 else "Ausência"
+            st.write(f"- {class_name}: {count} amostras")
+        
+        # Check minimum samples per class
+        min_samples_per_class = min(class_counts)
+        if min_samples_per_class < 2:
+            st.error(f"""
+            ⚠️ **Erro**: Dados insuficientes para treinamento!
+            
+            A classe com menos amostras tem apenas {min_samples_per_class} exemplo(s).
+            São necessários pelo menos 2 exemplos de cada classe.
+            
+            **Soluções:**
+            1. Adicione mais pontos de ocorrência da espécie
+            2. Gere mais pseudo-ausências
+            3. Verifique se os dados foram carregados corretamente
+            """)
+            return
+        
+        if min_samples_per_class < n_folds:
+            st.warning(f"""
+            ⚠️ **Aviso**: Poucos dados para validação cruzada!
+            
+            A classe com menos amostras tem apenas {min_samples_per_class} exemplos,
+            mas foram solicitados {n_folds} folds para validação cruzada.
+            
+            Reduzindo automaticamente para {min_samples_per_class} folds.
+            """)
+            n_folds = min_samples_per_class
         
         # Model initialization parameters
         
