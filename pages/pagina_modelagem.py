@@ -13,6 +13,7 @@ from datetime import datetime
 
 from utils.modeling import SDMModel
 from utils.model_evaluation import create_roc_curve, create_confusion_matrix_plot
+from utils.spatial_cv import SpatialKFold
 
 def check_species_change():
     """Check if species has changed and clear model state if needed"""
@@ -77,7 +78,7 @@ def render_page():
         
         col1, col2 = st.columns(2)
         with col1:
-            use_cross_validation = st.checkbox("Usar Validação Cruzada (Stratified)", value=True)
+            use_cross_validation = st.checkbox("Usar Validação Cruzada", value=True)
         
         with col2:
             test_size = st.slider("Proporção de Teste (%)", 
@@ -85,9 +86,21 @@ def render_page():
                                 help="Porcentagem dos dados para teste (usado quando CV está desativado)")
         
         if use_cross_validation:
+            cv_type = st.radio("Tipo de Validação Cruzada", 
+                              ["Estratificada (Padrão)", "Espacial (Recomendada para SDM)"],
+                              index=1,
+                              help="Validação espacial evita autocorrelação espacial e fornece métricas mais realistas")
+            
             n_folds = st.slider("Número de Folds", min_value=3, max_value=10, value=5,
                               help="Número de partições para validação cruzada")
-            st.info(f"💡 Validação cruzada divide os dados em {n_folds} partes iguais")
+            
+            if cv_type == "Espacial (Recomendada para SDM)":
+                buffer_distance = st.number_input("Distância de Buffer (km)", 
+                                                min_value=0.0, max_value=100.0, value=10.0, step=5.0,
+                                                help="Distância de buffer ao redor dos pontos de teste para remover do treino")
+                st.info(f"💡 Validação cruzada espacial divide os dados em {n_folds} grupos espaciais com buffer de {buffer_distance}km")
+            else:
+                st.info(f"💡 Validação cruzada estratificada divide os dados em {n_folds} partes mantendo proporções de classes")
         else:
             st.info(f"💡 {test_size}% dos dados serão usados para teste, {100-test_size}% para treino")
         
@@ -123,6 +136,28 @@ def render_page():
             
             **Dica**: Para dados ecológicos, é melhor ter um modelo ligeiramente conservador (mais generalizado) 
             do que um modelo que se ajusta perfeitamente aos dados de treino (overfitting).
+            """)
+        
+        # Spatial CV explanation
+        with st.expander("🌍 Por que usar Validação Cruzada Espacial?"):
+            st.markdown("""
+            **Autocorrelação Espacial em Dados Ecológicos:**
+            
+            Dados de distribuição de espécies frequentemente apresentam **autocorrelação espacial** - 
+            pontos próximos tendem a ser mais similares do que pontos distantes. Isso pode levar a:
+            
+            - **Métricas infladas**: Validação padrão pode resultar em precisão irrealisticamente alta
+            - **Overfitting espacial**: Modelo memoriza padrões locais ao invés de relações ecológicas
+            - **Previsões ruins**: Desempenho pobre ao prever em novas áreas
+            
+            **Como a Validação Espacial Resolve:**
+            
+            1. **Agrupamento espacial**: Divide dados em grupos geograficamente separados
+            2. **Buffer de separação**: Remove pontos de treino próximos aos pontos de teste
+            3. **Métricas realistas**: Simula melhor a aplicação real do modelo em novas áreas
+            
+            **Recomendação**: Use sempre validação espacial para SDM, especialmente se planeja 
+            aplicar o modelo em áreas não amostradas.
             """)
     
     # Create tabs
@@ -288,7 +323,22 @@ def render_page():
                 
                 if use_cross_validation:
                     # Cross-validation training
-                    cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
+                    if cv_type == "Espacial (Recomendada para SDM)":
+                        # Check if we have coordinates
+                        if 'latitude' not in bioclim_data.columns or 'longitude' not in bioclim_data.columns:
+                            st.error("⚠️ Coordenadas não encontradas. Usando validação estratificada.")
+                            cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
+                            coordinates = None
+                        else:
+                            # Extract coordinates
+                            coordinates = bioclim_data[['longitude', 'latitude']].values
+                            # Convert buffer distance from km to degrees (approximate)
+                            buffer_degrees = buffer_distance / 111.0  # 1 degree ≈ 111 km
+                            cv = SpatialKFold(n_splits=n_folds, buffer_distance=buffer_degrees)
+                            st.info(f"📍 Usando validação cruzada espacial com {len(coordinates)} pontos")
+                    else:
+                        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=random_state)
+                        coordinates = None
                     
                     cv_scores = {
                         'accuracy': [],
@@ -300,9 +350,19 @@ def render_page():
                     
                     progress_bar = st.progress(0)
                     
-                    for fold, (train_idx, val_idx) in enumerate(cv.split(X, y)):
+                    # Get splits based on CV type
+                    if coordinates is not None and cv_type == "Espacial (Recomendada para SDM)":
+                        splits = list(cv.split(X, y, coordinates=coordinates))
+                    else:
+                        splits = list(cv.split(X, y))
+                    
+                    for fold, (train_idx, val_idx) in enumerate(splits):
                         X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
                         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
+                        
+                        # Log fold information for spatial CV
+                        if cv_type == "Espacial (Recomendada para SDM)" and coordinates is not None:
+                            st.text(f"Fold {fold+1}: {len(train_idx)} treino, {len(val_idx)} validação")
                         
                         # Train on fold with hyperparameters
                         sdm_model.train(X_train, y_train, 
@@ -332,7 +392,8 @@ def render_page():
                                   min_samples_leaf=min_samples_leaf)
                     
                     # Show CV results
-                    st.subheader("Resultados da Validação Cruzada")
+                    cv_title = "Resultados da Validação Cruzada Espacial" if cv_type == "Espacial (Recomendada para SDM)" else "Resultados da Validação Cruzada Estratificada"
+                    st.subheader(cv_title)
                     
                     cv_results = pd.DataFrame(cv_scores)
                     cv_summary = cv_results.describe()
