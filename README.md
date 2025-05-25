@@ -17,6 +17,7 @@ TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) é uma plataforma educaciona
 - 📊 **Validação Cruzada Espacial** para métricas mais realistas
 - 🔮 **Projeções futuras** com cenários climáticos (SSP1-2.6 e SSP5-8.5)
 - 💾 **Gerenciamento de modelos** com save/load persistente
+- 🚀 **Interface intuitiva** com navegação linear guiada
 
 ## 🚀 Melhorias Recentes (2025)
 
@@ -33,6 +34,12 @@ TAIPA (Tecnologia Aplicada para Pesquisa Ambiental) é uma plataforma educaciona
 - ✅ Exceções específicas ao invés de genéricas
 - ✅ Constantes definidas para valores geográficos
 - ✅ Imports organizados e otimizados
+
+### Interface e Usabilidade
+- ✅ **Nova navegação linear**: Fluxo guiado passo a passo com botões Anterior/Próximo
+- ✅ **Barra de progresso visual**: Feedback claro do avanço no workflow
+- ✅ **Validação de etapas**: Impossível pular etapas essenciais
+- ✅ **Mensagens contextuais**: Orientações específicas em cada etapa
 
 ## 📁 Estrutura do Projeto
 
@@ -104,23 +111,33 @@ streamlit run app.py
 http://localhost:8501
 ```
 
-3. **Siga o fluxo de trabalho**
-   - Módulo 1: Busque dados de ocorrência da espécie
-   - Módulo 2: Gere pseudo-ausências
-   - Módulo 3: Analise variáveis bioclimáticas
-   - Módulo 4: Treine o modelo
-   - Módulo 5: Gere mapas de distribuição
-   - Módulo 6: Projete cenários futuros
+3. **Siga o fluxo de trabalho guiado**
+   - Clique em "Começar" na tela inicial
+   - Use os botões "Anterior" e "Próximo" para navegar
+   - Complete cada etapa antes de avançar:
+     - Etapa 1: Busque dados de ocorrência da espécie
+     - Etapa 2: Gere pseudo-ausências
+     - Etapa 3: Analise variáveis bioclimáticas
+     - Etapa 4: Treine o modelo
+     - Etapa 5: Gere mapas de distribuição
+     - Etapa 6: Projete cenários futuros
 
 ## 📊 Fluxo de Trabalho SDM
 
 ```mermaid
 graph LR
-    A[Busca GBIF] --> B[Pseudo-ausências]
-    B --> C[Análise Bioclimática]
-    C --> D[Modelagem RF]
-    D --> E[Projeção Espacial]
-    E --> F[Projeção Futura]
+    A[🔍 Busca GBIF] --> B[📍 Pseudo-ausências]
+    B --> C[🌡️ Análise Bioclimática]
+    C --> D[🤖 Modelagem RF]
+    D --> E[🗺️ Projeção Espacial]
+    E --> F[🔮 Projeção Futura]
+    
+    style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    style B fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    style C fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    style D fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    style E fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    style F fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
 ```
 
 ## 🔧 Configurações Principais
