@@ -391,29 +391,52 @@ def render_page():
                     with tabs[1]:
                         st.subheader("Análise de Mudanças")
                         
-                        # Calculate change map for binary data
-                        # -1: loss, 0: no change, 1: gain
-                        change_map = binary_map_future - binary_map_current
+                        # Calculate change map with 4 categories
+                        # -1: loss (1->0), 0: stable absent (0->0), 1: gain (0->1), 2: stable present (1->1)
+                        change_map = np.full_like(binary_map_current, np.nan, dtype=float)
                         
-                        # Create custom colorscale for change map
-                        colors = ['red', 'lightgray', 'green']
+                        # Create masks for each category
+                        valid_pixels = ~np.isnan(binary_map_current) & ~np.isnan(binary_map_future)
+                        
+                        # Loss: present to absent
+                        loss_mask = (binary_map_current == 1) & (binary_map_future == 0) & valid_pixels
+                        change_map[loss_mask] = -1
+                        
+                        # Stable absent: absent to absent
+                        stable_absent_mask = (binary_map_current == 0) & (binary_map_future == 0) & valid_pixels
+                        change_map[stable_absent_mask] = 0
+                        
+                        # Gain: absent to present
+                        gain_mask = (binary_map_current == 0) & (binary_map_future == 1) & valid_pixels
+                        change_map[gain_mask] = 1
+                        
+                        # Stable present: present to present
+                        stable_present_mask = (binary_map_current == 1) & (binary_map_future == 1) & valid_pixels
+                        change_map[stable_present_mask] = 2
+                        
+                        # Create custom colorscale for 4 categories
+                        colors = ['red', 'lightgray', 'green', 'darkgray']
                         colorscale = [
-                            [0.0, colors[0]],  # Loss (red)
-                            [0.5, colors[1]],  # No change (gray)
-                            [1.0, colors[2]]   # Gain (green)
+                            [0.0, colors[0]],    # Loss (red)
+                            [0.33, colors[0]],   # Loss (red)
+                            [0.33, colors[1]],   # Stable absent (light gray)
+                            [0.5, colors[1]],    # Stable absent (light gray)
+                            [0.5, colors[2]],    # Gain (green)
+                            [0.67, colors[2]],   # Gain (green)
+                            [0.67, colors[3]],   # Stable present (dark gray)
+                            [1.0, colors[3]]     # Stable present (dark gray)
                         ]
                         
                         fig_change = go.Figure(data=go.Heatmap(
                             z=change_map[::-1],
                             colorscale=colorscale,
-                            zmid=0,
                             zmin=-1,
-                            zmax=1,
+                            zmax=2,
                             showscale=True,
                             colorbar=dict(
                                 title="Mudança",
-                                tickvals=[-1, 0, 1],
-                                ticktext=['Perda', 'Sem mudança', 'Ganho']
+                                tickvals=[-1, 0, 1, 2],
+                                ticktext=['Perda', 'Sem adequabilidade', 'Ganho', 'Adequabilidade mantida']
                             )
                         ))
                         fig_change.update_layout(
@@ -434,9 +457,10 @@ def render_page():
                         st.plotly_chart(fig_change, use_container_width=True)
                         
                         st.info("""
-                        🔴 **Vermelho**: Áreas com perda de habitat adequado
-                        🟢 **Verde**: Áreas com ganho de habitat adequado
-                        ⚪ **Cinza**: Áreas sem mudança
+                        🔴 **Vermelho**: Áreas com perda de habitat adequado (adequado → não adequado)
+                        🟢 **Verde**: Áreas com ganho de habitat adequado (não adequado → adequado)
+                        ⚪ **Cinza claro**: Áreas que permanecem sem adequabilidade
+                        ⚫ **Cinza escuro**: Áreas que permanecem com adequabilidade
                         """)
                     
                     with tabs[2]:
@@ -511,12 +535,12 @@ def render_page():
                         stable_absent_area = stable_absent_mask.sum() * pixel_area_km2
                         
                         fig_pie = go.Figure(data=[go.Pie(
-                            labels=['Ganho', 'Perda', 'Habitat Estável', 'Sem Habitat Estável'],
+                            labels=['Ganho de Habitat', 'Perda de Habitat', 'Adequabilidade Mantida', 'Sem Adequabilidade'],
                             values=[gain_area, loss_area, stable_present_area, stable_absent_area],
                             hole=.3,
-                            marker_colors=['green', 'red', 'darkgreen', 'lightgray']
+                            marker_colors=['green', 'red', 'darkgray', 'lightgray']
                         )])
-                        fig_pie.update_layout(title="Distribuição de Mudanças")
+                        fig_pie.update_layout(title="Distribuição de Mudanças na Adequabilidade")
                         st.plotly_chart(fig_pie, use_container_width=True)
                         
                         # Additional metrics
@@ -524,11 +548,11 @@ def render_page():
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            st.metric("Ganho de Habitat", f"{gain_area:,.0f} km²")
-                            st.metric("Habitat Estável", f"{stable_present_area:,.0f} km²")
+                            st.metric("Ganho de Adequabilidade", f"{gain_area:,.0f} km²")
+                            st.metric("Adequabilidade Mantida", f"{stable_present_area:,.0f} km²")
                         
                         with col2:
-                            st.metric("Perda de Habitat", f"{loss_area:,.0f} km²")
+                            st.metric("Perda de Adequabilidade", f"{loss_area:,.0f} km²")
                             st.metric("Mudança Líquida", f"{(gain_area - loss_area):,.0f} km²")
                     
                     with tabs[3]:
