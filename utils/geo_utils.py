@@ -95,6 +95,10 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
     """
     Extract raster values at given points
     
+    NOTE: This function is provided for compatibility but is NOT used in the main
+    workflow. The BioclimAnalyzer class uses its own optimized extraction methods.
+    Temperature scaling (bio1-bio11) is properly handled here.
+    
     Args:
         points: List of (lat, lon) tuples or numpy array
         raster_paths: Path to raster file or list of paths
@@ -121,6 +125,8 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
     
     for raster_path in raster_paths:
         values = []
+        # Get layer name for temperature scaling check
+        layer_name = os.path.basename(raster_path).replace('.tif', '')
         
         # Check if raster file exists
         if os.path.exists(raster_path):
@@ -137,6 +143,13 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
                         # Check for nodata values
                         if src.nodata is not None and value == src.nodata:
                             value = np.nan
+                        else:
+                            # WorldClim temperature data is stored as integers multiplied by 10
+                            # Check if this is a temperature variable (bio1-bio11)
+                            if any(temp_var in layer_name for temp_var in 
+                                   ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6', 
+                                    'bio7', 'bio8', 'bio9', 'bio10', 'bio11']):
+                                value = value / 10.0
                             
                         values.append(value)
                         
@@ -149,8 +162,7 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
             # Fill with NaN if file not found
             values = [np.nan] * len(points)
         
-        # Store results using filename without extension as key
-        layer_name = os.path.basename(raster_path).replace('.tif', '')
+        # Store results using layer name as key
         results[layer_name] = values
     
     return results if return_dict else results[list(results.keys())[0]]
@@ -166,15 +178,29 @@ def calculate_buffer_area(point: Tuple[float, float], buffer_km: float) -> Dict:
     Returns:
         Dictionary with bounding box coordinates
     """
-    # Rough approximation: 1 degree ~ 111 km
-    buffer_deg = buffer_km / 111.0
-    
     lat, lon = point
+    
+    # Latitude: 1 degree ~ 111 km (approximately constant)
+    buffer_lat_deg = buffer_km / 111.0
+    
+    # Longitude: varies with latitude
+    # At the equator: 1 degree ~ 111 km
+    # At latitude φ: 1 degree ~ 111 * cos(φ) km
+    import math
+    lat_rad = math.radians(lat)
+    km_per_lon_degree = 111.0 * math.cos(lat_rad)
+    
+    # Avoid division by zero near poles
+    if km_per_lon_degree > 0.1:
+        buffer_lon_deg = buffer_km / km_per_lon_degree
+    else:
+        buffer_lon_deg = buffer_lat_deg  # Fallback for polar regions
+    
     return {
-        "min_lat": lat - buffer_deg,
-        "max_lat": lat + buffer_deg,
-        "min_lon": lon - buffer_deg,
-        "max_lon": lon + buffer_deg,
+        "min_lat": lat - buffer_lat_deg,
+        "max_lat": lat + buffer_lat_deg,
+        "min_lon": lon - buffer_lon_deg,
+        "max_lon": lon + buffer_lon_deg,
         "center": point,
         "buffer_km": buffer_km
     }
