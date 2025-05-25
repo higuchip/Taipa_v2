@@ -761,9 +761,11 @@ def render_page():
                                 # Create colorful visualization
                                 _, ax = plt.subplots(figsize=(10, 8))
                                 
-                                # Create custom colormap for change map (red for loss, gray for no change, green for gain)
-                                cmap = mcolors.ListedColormap(['red', 'lightgray', 'green'])
-                                bounds_cmap = [-1.5, -0.5, 0.5, 1.5]
+                                # Create custom colormap for 4 categories
+                                # -1: loss (red), 0: stable absent (light gray), 1: gain (green), 2: stable present (dark gray)
+                                colors = ['#DC1414', '#DCDCDC', '#228B22', '#696969']  # Red, Light gray, Green, Dark gray
+                                cmap = mcolors.ListedColormap(colors)
+                                bounds_cmap = [-1.5, -0.5, 0.5, 1.5, 2.5]
                                 norm = mcolors.BoundaryNorm(bounds_cmap, cmap.N)
                                 
                                 im = ax.imshow(change_map, cmap=cmap, norm=norm, extent=[bounds[0], bounds[2], bounds[1], bounds[3]], origin='upper')
@@ -777,9 +779,9 @@ def render_page():
                                 ax.set_title(f'Mudança na Distribuição - {cenario} ({periodo})')
                                 
                                 # Add colorbar with custom labels
-                                cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1])
+                                cbar = plt.colorbar(im, ax=ax, ticks=[-1, 0, 1, 2], boundaries=bounds_cmap)
                                 cbar.set_label('Mudança')
-                                cbar.ax.set_yticklabels(['Perda', 'Sem mudança', 'Ganho'])
+                                cbar.ax.set_yticklabels(['Perda', 'Sem adequabilidade', 'Ganho', 'Adequabilidade mantida'])
                                 
                                 # Save to buffer
                                 plt.tight_layout()
