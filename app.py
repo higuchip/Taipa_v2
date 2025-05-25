@@ -454,7 +454,6 @@ if current_page == 0:
                 st.rerun()
     
     else:
-        st.balloons()
         st.success("""
         ### 🎉 Análise completa!
         

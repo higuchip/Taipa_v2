@@ -175,7 +175,6 @@ def render_page():
             
             # Display results
             st.success(f"✅ {len(pseudo_absences)} pseudo-ausências geradas!")
-            st.balloons()
             
             # Indicador de conclusão
             st.info("""
