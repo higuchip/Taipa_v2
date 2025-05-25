@@ -213,7 +213,7 @@ def render_page():
             st.download_button(
                 label="Download CSV",
                 data=csv,
-                file_name=f"{species_name.replace(' ', '_')}_occurrences_BR.csv",
+                file_name=f"{species_for_session.replace(' ', '_')}_occurrences_BR.csv",
                 mime="text/csv"
             )
             

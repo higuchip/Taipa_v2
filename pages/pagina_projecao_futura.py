@@ -220,11 +220,11 @@ def render_page():
                     if threshold is None:
                         valid_probs = prediction_map_future[~np.isnan(prediction_map_future)]
                         
-                        if threshold_method == "Média das Predições":
+                        if metodo_threshold == "Média das Predições":
                             threshold = np.mean(valid_probs)
-                        elif threshold_method == "Percentil 50":
+                        elif metodo_threshold == "Percentil 50":
                             threshold = np.percentile(valid_probs, 50)
-                        elif threshold_method == "Percentil 10":
+                        elif metodo_threshold == "Percentil 10":
                             threshold = np.percentile(valid_probs, 10)
                         else:
                             threshold = 0.5
