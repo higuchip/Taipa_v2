@@ -415,28 +415,41 @@ def render_page():
                         change_map[stable_present_mask] = 2
                         
                         # Create custom colorscale for 4 categories
-                        colors = ['red', 'lightgray', 'green', 'darkgray']
+                        # Define discrete colorscale
                         colorscale = [
-                            [0.0, colors[0]],    # Loss (red)
-                            [0.33, colors[0]],   # Loss (red)
-                            [0.33, colors[1]],   # Stable absent (light gray)
-                            [0.5, colors[1]],    # Stable absent (light gray)
-                            [0.5, colors[2]],    # Gain (green)
-                            [0.67, colors[2]],   # Gain (green)
-                            [0.67, colors[3]],   # Stable present (dark gray)
-                            [1.0, colors[3]]     # Stable present (dark gray)
+                            # Value -1: Red (loss)
+                            [0.0, 'rgb(220, 20, 20)'],
+                            [0.2, 'rgb(220, 20, 20)'],
+                            # Value 0: Light gray (stable absent)
+                            [0.2, 'rgb(220, 220, 220)'],
+                            [0.4, 'rgb(220, 220, 220)'],
+                            # Value 1: Green (gain)
+                            [0.4, 'rgb(34, 139, 34)'],
+                            [0.6, 'rgb(34, 139, 34)'],
+                            # Value 2: Dark gray (stable present)
+                            [0.6, 'rgb(105, 105, 105)'],
+                            [1.0, 'rgb(105, 105, 105)']
                         ]
                         
+                        # Normalize change_map values to 0-1 range for colorscale
+                        # -1 -> 0.1, 0 -> 0.3, 1 -> 0.5, 2 -> 0.9
+                        z_normalized = change_map.copy()
+                        z_normalized[change_map == -1] = 0.1
+                        z_normalized[change_map == 0] = 0.3
+                        z_normalized[change_map == 1] = 0.5
+                        z_normalized[change_map == 2] = 0.9
+                        
                         fig_change = go.Figure(data=go.Heatmap(
-                            z=change_map[::-1],
+                            z=z_normalized[::-1],
                             colorscale=colorscale,
-                            zmin=-1,
-                            zmax=2,
+                            zmin=0,
+                            zmax=1,
                             showscale=True,
                             colorbar=dict(
                                 title="Mudança",
-                                tickvals=[-1, 0, 1, 2],
-                                ticktext=['Perda', 'Sem adequabilidade', 'Ganho', 'Adequabilidade mantida']
+                                tickvals=[0.1, 0.3, 0.5, 0.9],
+                                ticktext=['Perda', 'Sem adequabilidade', 'Ganho', 'Adequabilidade mantida'],
+                                tickmode='array'
                             )
                         ))
                         fig_change.update_layout(
