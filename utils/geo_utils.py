@@ -1,13 +1,14 @@
 import folium
-import pandas as pd
+from folium.plugins import Draw, HeatMap
 from typing import List, Dict, Tuple, Union
-import requests
-from io import BytesIO
 import rasterio
-from rasterio.io import MemoryFile
-from shapely.geometry import Point, box
 import numpy as np
 import os
+import math
+
+# Constants for geographic calculations
+KM_PER_DEGREE_LAT = 111.0  # Approximately constant
+WORLDCLIM_TEMP_SCALE = 10.0  # WorldClim stores temperature * 10
 
 def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] = None) -> folium.Map:
     """
@@ -35,7 +36,6 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     m = folium.Map(location=center, zoom_start=5)
     
     # Add drawing tools
-    from folium.plugins import Draw
     draw = Draw(
         export=False,
         position='topleft',
@@ -149,11 +149,11 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
                             if any(temp_var in layer_name for temp_var in 
                                    ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6', 
                                     'bio7', 'bio8', 'bio9', 'bio10', 'bio11']):
-                                value = value / 10.0
+                                value = value / WORLDCLIM_TEMP_SCALE
                             
                         values.append(value)
                         
-            except Exception as e:
+            except (rasterio.errors.RasterioIOError, ValueError) as e:
                 print(f"Error reading {raster_path}: {str(e)}")
                 # Fill with NaN if error
                 values = [np.nan] * len(points)
@@ -180,15 +180,14 @@ def calculate_buffer_area(point: Tuple[float, float], buffer_km: float) -> Dict:
     """
     lat, lon = point
     
-    # Latitude: 1 degree ~ 111 km (approximately constant)
-    buffer_lat_deg = buffer_km / 111.0
+    # Latitude: 1 degree ~ KM_PER_DEGREE_LAT km (approximately constant)
+    buffer_lat_deg = buffer_km / KM_PER_DEGREE_LAT
     
     # Longitude: varies with latitude
-    # At the equator: 1 degree ~ 111 km
-    # At latitude φ: 1 degree ~ 111 * cos(φ) km
-    import math
+    # At the equator: 1 degree ~ KM_PER_DEGREE_LAT km
+    # At latitude φ: 1 degree ~ KM_PER_DEGREE_LAT * cos(φ) km
     lat_rad = math.radians(lat)
-    km_per_lon_degree = 111.0 * math.cos(lat_rad)
+    km_per_lon_degree = KM_PER_DEGREE_LAT * math.cos(lat_rad)
     
     # Avoid division by zero near poles
     if km_per_lon_degree > 0.1:
@@ -215,8 +214,6 @@ def create_heatmap(occurrences: List[Dict]) -> folium.Map:
     Returns:
         Folium map with heatmap layer
     """
-    from folium.plugins import HeatMap
-    
     # Extract coordinates
     heat_data = []
     for occ in occurrences:

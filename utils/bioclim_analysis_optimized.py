@@ -9,7 +9,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
-warnings.filterwarnings('ignore')
+
+# Only suppress specific warnings that are known and harmless
+warnings.filterwarnings('ignore', category=FutureWarning, module='statsmodels')
+warnings.filterwarnings('ignore', message='The frame.append method is deprecated')
 
 
 class BioclimAnalyzer:
@@ -77,7 +80,6 @@ class BioclimAnalyzer:
         """
         # Initialize result array
         n_points = len(points)
-        n_layers = len(layers)
         
         # Convert points to arrays for vectorized operations
         lats = np.array([p[0] for p in points])

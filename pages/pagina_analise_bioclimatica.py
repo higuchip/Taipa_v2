@@ -6,7 +6,8 @@ import seaborn as sns
 from pathlib import Path
 from utils.bioclim_analysis_optimized import BioclimAnalyzer
 import warnings
-warnings.filterwarnings('ignore')
+# Suppress specific matplotlib warnings about font fallback
+warnings.filterwarnings('ignore', message='Glyph.*missing from current font')
 
 @st.cache_resource
 def get_analyzer():
