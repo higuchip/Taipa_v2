@@ -292,30 +292,66 @@ def render_page():
         # Variable Selection
         st.subheader("6. Seleção Automática de Variáveis")
         
-        # Get steps of the selection process
-        selected_final, steps = analyzer.select_variables(
-            df_analysis, 
-            vif_threshold=vif_threshold,
-            correlation_threshold=corr_threshold,
-            return_steps=True
+        # Selection method choice
+        selection_method = st.radio(
+            "Método de seleção:",
+            ["Método Robusto (Recomendado)", "Método Stepwise Original"],
+            index=0,
+            help="O método robusto evita problemas comuns de multicolinearidade"
         )
         
-        # Show stepwise elimination process
-        with st.expander("Ver processo de eliminação stepwise", expanded=True):
-            for step in steps:
-                if step['action'] == 'removed':
-                    st.write(f"**Iteração {step['iteration']}**")
-                    st.dataframe(step['vif_values'])
-                    st.write(f"Removendo: **{step['removed_variable']}** (VIF = {step['removed_vif']:.2f})")
-                    st.write("---")
-                elif step['action'] == 'completed':
-                    st.write(f"**Processo concluído na iteração {step['iteration']}**")
-                    st.write("Todas as variáveis têm VIF abaixo do threshold")
-                    st.dataframe(step['vif_values'])
-                elif step['action'] == 'correlation_removal':
-                    st.write(f"**Remoção por correlação alta**")
-                    st.write(f"Removidas: {', '.join(step['removed_variables'])}")
-                    st.write(f"Variáveis finais: {', '.join(step['final_variables'])}")
+        if selection_method == "Método Robusto (Recomendado)":
+            # Use the new robust method
+            selected_final, selection_info = analyzer.select_variables_robust(
+                df_analysis,
+                correlation_threshold=corr_threshold,
+                vif_threshold=vif_threshold
+            )
+            
+            # Show selection details
+            with st.expander("Ver detalhes da seleção", expanded=True):
+                # Summary by removal reason
+                removal_summary = selection_info.groupby('reason_removed').size()
+                st.write("**Resumo da seleção:**")
+                for reason, count in removal_summary.items():
+                    if reason != 'kept':
+                        st.write(f"- Removidas por {reason}: {count} variáveis")
+                    else:
+                        st.write(f"- Mantidas: {count} variáveis")
+                
+                st.write("\n**Detalhes por variável:**")
+                # Show detailed table
+                display_info = selection_info[['variable', 'selected', 'reason_removed']].copy()
+                display_info['selected'] = display_info['selected'].apply(lambda x: '✅' if x else '❌')
+                st.dataframe(display_info, hide_index=True)
+            
+            steps = []  # For compatibility
+        else:
+            # Use original stepwise method
+            selected_final, steps = analyzer.select_variables(
+                df_analysis, 
+                vif_threshold=vif_threshold,
+                correlation_threshold=corr_threshold,
+                return_steps=True
+            )
+        
+        # Show stepwise elimination process only for original method
+        if selection_method != "Método Robusto (Recomendado)" and steps:
+            with st.expander("Ver processo de eliminação stepwise", expanded=True):
+                for step in steps:
+                    if step['action'] == 'removed':
+                        st.write(f"**Iteração {step['iteration']}**")
+                        st.dataframe(step['vif_values'])
+                        st.write(f"Removendo: **{step['removed_variable']}** (VIF = {step['removed_vif']:.2f})")
+                        st.write("---")
+                    elif step['action'] == 'completed':
+                        st.write(f"**Processo concluído na iteração {step['iteration']}**")
+                        st.write("Todas as variáveis têm VIF abaixo do threshold")
+                        st.dataframe(step['vif_values'])
+                    elif step['action'] == 'correlation_removal':
+                        st.write(f"**Remoção por correlação alta**")
+                        st.write(f"Removidas: {', '.join(step['removed_variables'])}")
+                        st.write(f"Variáveis finais: {', '.join(step['final_variables'])}")
         
         col1, col2 = st.columns(2)
         

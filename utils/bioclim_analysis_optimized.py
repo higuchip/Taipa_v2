@@ -529,12 +529,149 @@ class BioclimAnalyzer:
         
         return fig
     
+    def select_variables_robust(self, df: pd.DataFrame,
+                              correlation_threshold: float = 0.7,
+                              vif_threshold: float = 10.0,
+                              min_variables: int = 3) -> Tuple[List[str], pd.DataFrame]:
+        """
+        Robust variable selection method that avoids common pitfalls
+        
+        Parameters:
+        -----------
+        df : pd.DataFrame
+            DataFrame with bioclimatic variables
+        correlation_threshold : float
+            Maximum correlation allowed between variables
+        vif_threshold : float
+            Maximum VIF allowed
+        min_variables : int
+            Minimum number of variables to retain
+            
+        Returns:
+        --------
+        selected_vars : list
+            List of selected variable names
+        selection_info : pd.DataFrame
+            DataFrame with selection information
+        """
+        # Get bioclimatic columns
+        bio_cols = [col for col in df.columns if col.startswith('bio')]
+        
+        # Step 1: Remove variables with too many missing values
+        missing_pct = df[bio_cols].isnull().sum() / len(df) * 100
+        valid_vars = missing_pct[missing_pct < 10].index.tolist()
+        
+        # Step 2: Calculate correlation matrix
+        corr_matrix = df[valid_vars].corr().abs()
+        
+        # Step 3: Find highly correlated pairs
+        upper_tri = corr_matrix.where(
+            np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+        )
+        
+        # Step 4: For each highly correlated pair, keep the one with lower mean correlation
+        to_drop = set()
+        correlation_pairs = []
+        
+        for column in upper_tri.columns:
+            correlated_features = list(
+                upper_tri.index[upper_tri[column] > correlation_threshold]
+            )
+            for feature in correlated_features:
+                if column not in to_drop and feature not in to_drop:
+                    # Calculate mean correlation for both
+                    mean_corr_col = corr_matrix[column].mean()
+                    mean_corr_feat = corr_matrix[feature].mean()
+                    
+                    # Keep the one with lower mean correlation
+                    if mean_corr_col > mean_corr_feat:
+                        to_drop.add(column)
+                        kept = feature
+                    else:
+                        to_drop.add(feature)
+                        kept = column
+                    
+                    correlation_pairs.append({
+                        'var1': column,
+                        'var2': feature,
+                        'correlation': corr_matrix.loc[column, feature],
+                        'removed': column if column in to_drop else feature,
+                        'kept': kept
+                    })
+        
+        # Remove highly correlated variables
+        selected_vars = [v for v in valid_vars if v not in to_drop]
+        
+        # Step 5: Check VIF if we have enough variables
+        if len(selected_vars) > 2:
+            vif_data = pd.DataFrame()
+            vif_data["Variable"] = selected_vars
+            X = df[selected_vars].dropna()
+            
+            vif_values = []
+            for i in range(len(selected_vars)):
+                try:
+                    vif = variance_inflation_factor(X.values, i)
+                    vif_values.append(vif)
+                except:
+                    vif_values.append(np.inf)
+            
+            vif_data["VIF"] = vif_values
+            
+            # Remove variables with high VIF iteratively
+            while (vif_data["VIF"] > vif_threshold).any() and len(selected_vars) > min_variables:
+                # Remove variable with highest VIF
+                max_vif_idx = vif_data["VIF"].idxmax()
+                removed_var = vif_data.loc[max_vif_idx, "Variable"]
+                selected_vars.remove(removed_var)
+                
+                # Recalculate VIF
+                if len(selected_vars) > 2:
+                    vif_data = pd.DataFrame()
+                    vif_data["Variable"] = selected_vars
+                    X = df[selected_vars].dropna()
+                    
+                    vif_values = []
+                    for i in range(len(selected_vars)):
+                        try:
+                            vif = variance_inflation_factor(X.values, i)
+                            vif_values.append(vif)
+                        except:
+                            vif_values.append(np.inf)
+                    
+                    vif_data["VIF"] = vif_values
+                else:
+                    break
+        
+        # Create selection info DataFrame
+        selection_info = pd.DataFrame({
+            'variable': bio_cols,
+            'selected': [v in selected_vars for v in bio_cols],
+            'reason_removed': 'kept'
+        })
+        
+        # Add removal reasons
+        for var in bio_cols:
+            if var not in valid_vars:
+                selection_info.loc[selection_info['variable'] == var, 'reason_removed'] = 'too many missing values'
+            elif var in to_drop:
+                selection_info.loc[selection_info['variable'] == var, 'reason_removed'] = 'high correlation'
+            elif var in valid_vars and var not in selected_vars:
+                selection_info.loc[selection_info['variable'] == var, 'reason_removed'] = 'high VIF'
+        
+        return selected_vars, selection_info
+    
     def stepwise_selection_detailed(self, df: pd.DataFrame,
                                   vif_threshold: float = 5.0,
                                   correlation_threshold: float = 0.7,
                                   return_steps: bool = True) -> Union[List[str], Tuple[List[str], List[Dict]]]:
         """
         Stepwise variable selection with detailed steps
+        
+        This method uses an improved algorithm that:
+        1. First removes variables with VIF > threshold
+        2. Then removes correlated variables, keeping the one with lower VIF
+        3. Uses proper VIF calculation for multicollinearity detection
         """
         bio_cols = [col for col in df.columns if col.startswith('bio')]
         variables = bio_cols.copy()
@@ -575,24 +712,37 @@ class BioclimAnalyzer:
                     var2 = variables[j]
                     
                     if var1 not in to_remove and var2 not in to_remove:
-                        # Keep the one with lower average VIF
-                        temp_df1 = df[[v for v in variables if v != var1]]
-                        temp_df2 = df[[v for v in variables if v != var2]]
+                        # Calculate VIF for both variables in the current set
+                        # to decide which one to remove
+                        current_vars = [v for v in variables if v not in to_remove]
                         
-                        vif_final = pd.DataFrame()
-                        vif_final["Variable"] = [var1, var2]
-                        
-                        X_final = temp_df1.dropna()
-                        from statsmodels.tools.tools import add_constant
-                        X_final = add_constant(X_final)
-                        
-                        vif_final["VIF"] = [variance_inflation_factor(X_final.values, i) 
-                                          for i in range(X_final.shape[1])]
-                        vif_final = vif_final[vif_final["Variable"] != "const"]
-                        
-                        vif1 = vif_final[vif_final['Variable'] == var1]['VIF'].values[0]
-                        vif2 = vif_final[vif_final['Variable'] == var2]['VIF'].values[0]
-                        to_remove.add(var1 if vif1 > vif2 else var2)
+                        # Get VIF for each variable
+                        if len(current_vars) > 2:
+                            X_current = df[current_vars].dropna()
+                            vif_dict = {}
+                            
+                            for idx, var in enumerate(current_vars):
+                                try:
+                                    vif_dict[var] = variance_inflation_factor(X_current.values, idx)
+                                except:
+                                    vif_dict[var] = np.inf
+                            
+                            # Remove the variable with higher VIF
+                            vif1 = vif_dict.get(var1, np.inf)
+                            vif2 = vif_dict.get(var2, np.inf)
+                            
+                            # If both have high VIF, remove the one with higher value
+                            # If VIFs are similar, remove based on correlation strength
+                            if abs(vif1 - vif2) < 0.1:  # Similar VIF values
+                                # Remove the one with higher average correlation
+                                corr1 = np.mean(np.abs(corr_matrix.loc[var1, [v for v in variables if v != var1]]))
+                                corr2 = np.mean(np.abs(corr_matrix.loc[var2, [v for v in variables if v != var2]]))
+                                to_remove.add(var1 if corr1 > corr2 else var2)
+                            else:
+                                to_remove.add(var1 if vif1 > vif2 else var2)
+                        else:
+                            # If only 2 variables left, remove one arbitrarily
+                            to_remove.add(var2)
                 
                 if to_remove:
                     variables = [var for var in variables if var not in to_remove]
