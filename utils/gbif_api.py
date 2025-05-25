@@ -9,12 +9,15 @@ def search_species(scientific_name: str, country: Optional[str] = None, limit: i
     Args:
         scientific_name: Scientific name of the species
         country: Optional country code (e.g., 'BR' for Brazil)
-        limit: Maximum number of results to return
+        limit: Maximum number of results to return (max 500)
     
     Returns:
         Dictionary with occurrence data
     """
     base_url = "https://api.gbif.org/v1/occurrence/search"
+    
+    # Enforce maximum limit
+    limit = min(limit, 500)
     
     # If limit > 300, use pagination to avoid slow requests
     page_size = min(limit, 300)

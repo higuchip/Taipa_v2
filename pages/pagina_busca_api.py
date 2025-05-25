@@ -30,9 +30,10 @@ def render_page():
         limit = st.number_input(
             "Limite de resultados",
             min_value=10,
-            max_value=1000,
+            max_value=500,
             value=100,
-            step=10
+            step=10,
+            help="Máximo de 500 ocorrências para manter o desempenho"
         )
     
     map_type = st.radio(
