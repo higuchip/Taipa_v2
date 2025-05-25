@@ -293,68 +293,259 @@ st.markdown("---")
 
 # Display current page content
 if current_page == 0:
-    # Home page
-    st.markdown('<p class="sub-header">Plataforma Educacional de Modelagem de Distribuição de Espécies</p>', unsafe_allow_html=True)
+    # Home page with improved design
+    import plotly.graph_objects as go
+    
+    # Enhanced CSS for home page
+    st.markdown("""
+    <style>
+    .hero-gradient {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        padding: 2.5rem;
+        border-radius: 20px;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .hero-title {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #1b5e20;
+        margin-bottom: 1rem;
+    }
+    .hero-subtitle {
+        font-size: 1.3rem;
+        color: #388e3c;
+        margin-bottom: 1.5rem;
+    }
+    .feature-box {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        height: 100%;
+        transition: transform 0.2s;
+    }
+    .feature-box:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #2e7d32;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Hero Section
+    st.markdown("""
+    <div class="hero-gradient">
+        <h1 class="hero-title">🌿 TAIPA SDM</h1>
+        <p class="hero-subtitle">Transforme dados de biodiversidade em conhecimento para conservação</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Check overall progress
     completion_status = get_completion_status()
     completed_steps = sum(completion_status)
     
-    if completed_steps == 0:
-        st.info("""
-        🌱 **Primeira vez aqui?**
+    # Progress visualization for returning users
+    if completed_steps > 0:
+        col1, col2, col3 = st.columns([1, 2, 1])
         
-        Clique em **Começar** para iniciar sua jornada no mundo da Modelagem de Distribuição de Espécies!
-        
-        Esta plataforma guiará você através de todo o processo, desde a busca de dados até projeções climáticas futuras.
-        """)
-    elif completed_steps == len(completion_status):
-        st.success("""
-        🎉 **Parabéns! Você completou todo o fluxo!**
-        
-        Você pode revisar qualquer etapa usando o menu lateral ou começar um novo projeto.
-        """)
-    else:
-        st.info(f"""
-        🚀 **Você já completou {completed_steps} de {len(completion_status)} etapas!**
-        
-        Continue de onde parou clicando em **Começar**.
-        """)
+        with col2:
+            # Gauge chart for progress
+            progress_percent = (completed_steps / len(completion_status)) * 100
+            
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = progress_percent,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "Progresso do Projeto", 'font': {'size': 20}},
+                number = {'suffix': "%", 'font': {'size': 40}},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 1},
+                    'bar': {'color': "#4CAF50"},
+                    'steps': [
+                        {'range': [0, 50], 'color': "#E8F5E9"},
+                        {'range': [50, 80], 'color': "#C8E6C9"}
+                    ],
+                    'threshold': {
+                        'line': {'color': "#1B5E20", 'width': 4},
+                        'thickness': 0.75,
+                        'value': 100
+                    }
+                }
+            ))
+            fig.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=20))
+            st.plotly_chart(fig, use_container_width=True)
     
-    # Overview cards
-    st.markdown("### 📚 O que você aprenderá:")
+    # Quick stats if available
+    if completed_steps > 0 and "species_name" in st.session_state:
+        st.markdown("### 📊 Resumo do Projeto Atual")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.markdown(f"""
+            <div style="text-align: center;">
+                <div class="stats-number">🦎</div>
+                <div><b>{st.session_state.get('species_name', 'N/A')}</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            n_points = len(st.session_state.get('occurrence_data', [])) if 'occurrence_data' in st.session_state else 0
+            st.markdown(f"""
+            <div style="text-align: center;">
+                <div class="stats-number">{n_points}</div>
+                <div><b>Ocorrências</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            n_vars = len(st.session_state.get('selected_bioclim_vars', [])) if 'selected_bioclim_vars' in st.session_state else 0
+            st.markdown(f"""
+            <div style="text-align: center;">
+                <div class="stats-number">{n_vars}</div>
+                <div><b>Variáveis</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col4:
+            model_status = "✅" if st.session_state.get('model_trained', False) else "⏳"
+            st.markdown(f"""
+            <div style="text-align: center;">
+                <div class="stats-number">{model_status}</div>
+                <div><b>Modelo</b></div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Main CTA based on progress
+    if completed_steps == 0:
+        st.success("""
+        ### 🎯 Pronto para começar sua análise?
+        
+        Em apenas 6 passos simples, você criará modelos de distribuição de espécies usando dados reais e técnicas profissionais.
+        """)
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("🚀 Iniciar Primeira Análise", type="primary", use_container_width=True):
+                st.session_state.current_page = 1
+                st.rerun()
+    
+    elif completed_steps < len(completion_status):
+        # Find next step
+        next_step_idx = completed_steps + 1
+        next_step = pages[next_step_idx] if next_step_idx < len(pages) else None
+        
+        st.info(f"""
+        ### 🚀 Continue sua análise
+        
+        **Próxima etapa:** {next_step['icon']} {next_step['title']}
+        """)
+        
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("➡️ Continuar de onde parei", type="primary", use_container_width=True):
+                st.session_state.current_page = next_step_idx
+                st.rerun()
+    
+    else:
+        st.balloons()
+        st.success("""
+        ### 🎉 Análise completa!
+        
+        Parabéns! Você completou todo o fluxo de modelagem.
+        """)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("📊 Ver Resultados", use_container_width=True):
+                st.session_state.current_page = 5
+                st.rerun()
+        with col2:
+            if st.button("🔮 Ver Projeções", use_container_width=True):
+                st.session_state.current_page = 6
+                st.rerun()
+        with col3:
+            if st.button("🔄 Nova Análise", use_container_width=True):
+                for key in list(st.session_state.keys()):
+                    if key != 'current_page':
+                        del st.session_state[key]
+                st.session_state.current_page = 0
+                st.rerun()
+    
+    # Feature cards with better styling
+    st.markdown("### 🎓 O que é modelagem de distribuição de espécies?")
     
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown("""
-        **📊 Coleta de Dados**
-        - Integração com GBIF
-        - Filtragem de ocorrências
-        - Geração de pseudo-ausências
-        """)
+        <div class="feature-box">
+            <h3 style="color: #1976D2;">📊 Dados Reais</h3>
+            <p>Acesse milhões de registros de ocorrência de espécies do GBIF - a maior rede de biodiversidade do mundo.</p>
+            <hr style="border-color: #E3F2FD;">  
+            <small>✓ Busca por nome científico<br>
+            ✓ Filtros geográficos<br>
+            ✓ Validação automática</small>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col2:
         st.markdown("""
-        **🔬 Análise Ambiental**
-        - Variáveis bioclimáticas
-        - Seleção de preditores
-        - Redução de colinearidade
-        """)
+        <div class="feature-box">
+            <h3 style="color: #388E3C;">🌡️ Análise Climática</h3>
+            <p>Utilize 19 variáveis bioclimáticas do WorldClim para entender os requisitos ambientais das espécies.</p>
+            <hr style="border-color: #E8F5E9;">
+            <small>✓ Temperatura e precipitação<br>
+            ✓ Sazonalidade climática<br>
+            ✓ Extremos ambientais</small>
+        </div>
+        """, unsafe_allow_html=True)
     
     with col3:
         st.markdown("""
-        **🤖 Modelagem e Projeção**
-        - Random Forest para SDM
-        - Mapas de adequabilidade
-        - Cenários climáticos futuros
+        <div class="feature-box">
+            <h3 style="color: #D32F2F;">🤖 Machine Learning</h3>
+            <p>Algoritmos de ponta (Random Forest) com validação espacial para criar modelos precisos e confiáveis.</p>
+            <hr style="border-color: #FFEBEE;">
+            <small>✓ Validação cruzada espacial<br>
+            ✓ Métricas de desempenho<br>
+            ✓ Mapas de adequabilidade</small>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Resources section
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    with st.expander("💡 Dicas para melhores resultados"):
+        st.markdown("""
+        1. **Qualidade dos dados**: Sempre revise os pontos de ocorrência no mapa antes de prosseguir
+        2. **Pseudo-ausências**: Use pelo menos o dobro do número de presenças
+        3. **Variáveis**: Selecione variáveis biologicamente relevantes para sua espécie
+        4. **Validação**: A validação cruzada espacial é essencial para evitar superestimação
+        5. **Interpretação**: Considere o conhecimento biológico ao interpretar os mapas
         """)
     
-    # Quick status
-    with st.expander("📈 Ver progresso detalhado"):
-        for i, page in enumerate(pages[1:], 1):
-            status = "✅ Concluído" if i <= len(completion_status) and completion_status[i-1] else "⏳ Pendente"
-            st.write(f"{page['icon']} **{page['title']}**: {status}")
+    with st.expander("📚 Saiba mais sobre SDM"):
+        st.markdown("""
+        **SDM (Species Distribution Modeling)** é uma técnica que combina:
+        - Dados de ocorrência de espécies
+        - Variáveis ambientais (clima, topografia, etc.)
+        - Algoritmos estatísticos/machine learning
+        
+        Para prever onde uma espécie pode ocorrer baseado em suas preferências ambientais.
+        
+        **Aplicações:**
+        - Conservação da biodiversidade
+        - Avaliação de impactos das mudanças climáticas
+        - Identificação de áreas prioritárias
+        - Prevenção de invasões biológicas
+        """)
 
 else:
     # Regular pages
