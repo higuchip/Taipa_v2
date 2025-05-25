@@ -10,6 +10,15 @@ import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# Import bioclim labels if available
+try:
+    from utils.bioclim_labels import get_bioclim_label, format_bioclim_var
+    LABELS_AVAILABLE = True
+except ImportError:
+    LABELS_AVAILABLE = False
+    def get_bioclim_label(var): return var
+    def format_bioclim_var(var, include_unit=True): return var
+
 # Only suppress specific warnings that are known and harmless
 warnings.filterwarnings('ignore', category=FutureWarning, module='statsmodels')
 warnings.filterwarnings('ignore', message='The frame.append method is deprecated')
@@ -464,9 +473,9 @@ class BioclimAnalyzer:
         # Create horizontal bar plot
         bars = ax.barh(range(len(vif_data)), vif_data['VIF'], color=colors)
         
-        # Add variable names
+        # Add variable names with translations
         ax.set_yticks(range(len(vif_data)))
-        ax.set_yticklabels([f"{row['Variable']}: {row['Description']}" 
+        ax.set_yticklabels([format_bioclim_var(row['Variable'], include_unit=False) 
                            for _, row in vif_data.iterrows()])
         
         # Add threshold line

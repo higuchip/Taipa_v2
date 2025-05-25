@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 from utils.bioclim_analysis_optimized import BioclimAnalyzer
+from utils.bioclim_labels import get_bioclim_label, format_bioclim_var
 import warnings
 # Suppress specific matplotlib warnings about font fallback
 warnings.filterwarnings('ignore', message='Glyph.*missing from current font')
@@ -91,7 +92,7 @@ def render_page():
         "Selecione as variáveis bioclimáticas para análise",
         options=available_vars,
         default=available_vars,  # Include all variables by default
-        format_func=lambda x: f"{x}: {analyzer.metadata['layers'].get(x, {}).get('name', x)}"
+        format_func=lambda x: format_bioclim_var(x)
     )
     
     if not selected_vars:

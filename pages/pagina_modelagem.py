@@ -14,6 +14,7 @@ from datetime import datetime
 from utils.modeling import SDMModel
 from utils.model_evaluation import create_roc_curve, create_confusion_matrix_plot
 from utils.spatial_cv import SpatialKFold
+from utils.bioclim_labels import get_bioclim_label, format_bioclim_var
 
 def check_species_change():
     """Check if species has changed and clear model state if needed"""
@@ -224,6 +225,7 @@ def render_page():
             "Selecione as variáveis para o modelo",
             options=env_vars,
             default=default_vars,
+            format_func=lambda x: format_bioclim_var(x),
             help="Selecione as variáveis bioclimáticas para incluir no modelo"
         )
         
@@ -239,13 +241,21 @@ def render_page():
             # Correlation matrix
             corr_matrix = all_data.corr()
             
+            # Create correlation matrix with translated labels
+            translated_labels = [format_bioclim_var(var, include_unit=False) for var in corr_matrix.columns]
+            corr_matrix_display = corr_matrix.copy()
+            corr_matrix_display.index = translated_labels
+            corr_matrix_display.columns = translated_labels
+            
             # Plot correlation heatmap
             st.subheader("Matriz de Correlação")
             fig, ax = plt.subplots(figsize=(12, 10))
-            sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0,
+            sns.heatmap(corr_matrix_display, annot=True, cmap='coolwarm', center=0,
                       square=True, linewidths=0.5, cbar_kws={"shrink": 0.8},
                       ax=ax, fmt='.2f', annot_kws={'size': 8})
             ax.set_title('Correlação entre Variáveis Bioclimáticas', fontsize=16, pad=20)
+            plt.xticks(rotation=45, ha='right')
+            plt.yticks(rotation=0)
             plt.tight_layout()
             st.pyplot(fig)
             
@@ -256,8 +266,8 @@ def render_page():
                 for j in range(i+1, len(corr_matrix.columns)):
                     if abs(corr_matrix.iloc[i, j]) > 0.7:
                         high_corr.append({
-                            'Variável 1': corr_matrix.columns[i],
-                            'Variável 2': corr_matrix.columns[j],
+                            'Variável 1': format_bioclim_var(corr_matrix.columns[i]),
+                            'Variável 2': format_bioclim_var(corr_matrix.columns[j]),
                             'Correlação': corr_matrix.iloc[i, j]
                         })
             
@@ -410,6 +420,15 @@ def render_page():
                         'auc': []
                     }
                     
+                    # Translation dictionary for metrics
+                    metric_translations = {
+                        'accuracy': 'Acurácia',
+                        'precision': 'Precisão',
+                        'recall': 'Sensibilidade',
+                        'f1': 'F1-Score',
+                        'auc': 'AUC-ROC'
+                    }
+                    
                     progress_bar = st.progress(0)
                     
                     # Get splits based on CV type
@@ -460,17 +479,21 @@ def render_page():
                     cv_results = pd.DataFrame(cv_scores)
                     cv_summary = cv_results.describe()
                     
+                    # Create translated version for display
+                    cv_results_display = cv_results.copy()
+                    cv_results_display.columns = [metric_translations.get(col, col) for col in cv_results_display.columns]
+                    
                     col1, col2 = st.columns(2)
                     
                     with col1:
-                        st.dataframe(cv_results)
+                        st.dataframe(cv_results_display)
                     
                     with col2:
-                        # Plot CV results
+                        # Plot CV results with translated labels
                         fig, ax = plt.subplots(figsize=(8, 6))
-                        cv_results.boxplot(ax=ax)
-                        ax.set_ylabel('Score')
-                        ax.set_title('Distribuição das Métricas - CV')
+                        cv_results_display.boxplot(ax=ax)
+                        ax.set_ylabel('Valor')
+                        ax.set_title('Distribuição das Métricas - Validação Cruzada')
                         plt.xticks(rotation=45)
                         plt.tight_layout()
                         st.pyplot(fig)
@@ -482,7 +505,8 @@ def render_page():
                     cols = st.columns(len(mean_scores))
                     for i, (metric, score) in enumerate(mean_scores.items()):
                         with cols[i]:
-                            st.metric(metric.title(), f"{score:.3f}")
+                            metric_label = metric_translations.get(metric, metric.title())
+                            st.metric(metric_label, f"{score:.3f}")
                     
                 else:
                     # Simple train-test split
@@ -505,11 +529,11 @@ def render_page():
                     
                     # Calculate metrics
                     test_metrics = {
-                        'Accuracy': accuracy_score(y_test, y_pred),
-                        'Precision': precision_score(y_test, y_pred),
-                        'Recall': recall_score(y_test, y_pred),
+                        'Acurácia': accuracy_score(y_test, y_pred),
+                        'Precisão': precision_score(y_test, y_pred),
+                        'Sensibilidade': recall_score(y_test, y_pred),
                         'F1-Score': f1_score(y_test, y_pred),
-                        'AUC': roc_auc_score(y_test, y_proba)
+                        'AUC-ROC': roc_auc_score(y_test, y_proba)
                     }
                     
                     # Show results
@@ -553,8 +577,13 @@ def render_page():
                     'importance': rf_classifier.feature_importances_
                 }).sort_values('importance', ascending=False)
                 
-                # Plot feature importance
-                fig = px.bar(feature_importance, x='importance', y='variable', 
+                # Add translated labels
+                feature_importance['variable_label'] = feature_importance['variable'].apply(
+                    lambda x: format_bioclim_var(x)
+                )
+                
+                # Plot feature importance with translated labels
+                fig = px.bar(feature_importance, x='importance', y='variable_label', 
                            orientation='h', title='Importância das Variáveis')
                 fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
@@ -567,6 +596,18 @@ def render_page():
                 
                 st.success("✅ Modelo treinado com sucesso!")
                 st.info(f"Modelo treinado para: {st.session_state.get('species_name', 'espécie não identificada')}")
+                
+                # Add metrics glossary
+                with st.expander("📊 Entenda as métricas"):
+                    st.markdown("""
+                    - **Acurácia**: Proporção de predições corretas (presença e ausência)
+                    - **Precisão**: Das predições de presença, quantas estavam corretas
+                    - **Sensibilidade (Recall)**: Das presenças reais, quantas foram detectadas
+                    - **F1-Score**: Média harmônica entre Precisão e Sensibilidade
+                    - **AUC-ROC**: Área sob a curva ROC (0.5 = aleatório, 1.0 = perfeito)
+                    
+                    💡 Para SDM, **Sensibilidade** alta é importante para não perder áreas de ocorrência!
+                    """)
     
     with tab3:
         st.header("Avaliação do Modelo")
@@ -635,12 +676,12 @@ def render_page():
             **Aqui (Avaliação Geral):**
             - Usamos 100% dos dados (treinamento + teste)
             - O modelo já "conhece" 80% desses dados
-            - Accuracy tipicamente maior (~0.93)
+            - Acurácia tipicamente maior (~0.93)
             
             **Conjunto de Teste:**
             - Apenas 20% dos dados (nunca vistos)
             - Métrica mais realista
-            - Accuracy tipicamente menor (~0.82)
+            - Acurácia tipicamente menor (~0.82)
             
             ### Qual métrica usar?
             
@@ -653,11 +694,11 @@ def render_page():
             """)
         
         overall_metrics = {
-            'Accuracy': accuracy_score(y, y_pred),
-            'Precision': precision_score(y, y_pred),
-            'Recall': recall_score(y, y_pred),
+            'Acurácia': accuracy_score(y, y_pred),
+            'Precisão': precision_score(y, y_pred),
+            'Sensibilidade': recall_score(y, y_pred),
             'F1-Score': f1_score(y, y_pred),
-            'AUC': roc_auc_score(y, y_proba)
+            'AUC-ROC': roc_auc_score(y, y_proba)
         }
         
         cols = st.columns(len(overall_metrics))
@@ -670,11 +711,11 @@ def render_page():
             st.markdown("""
             ### Glossário de Métricas
             
-            - **Accuracy**: Porcentagem de predições corretas (presença + ausência)
-            - **Precision**: Quando o modelo diz "presença", quantas vezes está certo?
-            - **Recall**: Das presenças reais, quantas o modelo encontrou?
-            - **F1-Score**: Média harmônica entre Precision e Recall
-            - **AUC**: Área sob a curva ROC (0.5 = aleatório, 1.0 = perfeito)
+            - **Acurácia**: Porcentagem de predições corretas (presença + ausência)
+            - **Precisão**: Quando o modelo diz "presença", quantas vezes está certo?
+            - **Sensibilidade**: Das presenças reais, quantas o modelo encontrou?
+            - **F1-Score**: Média harmônica entre Precisão e Sensibilidade
+            - **AUC-ROC**: Área sob a curva ROC (0.5 = aleatório, 1.0 = perfeito)
             
             ### Para SDM (Modelagem de Distribuição de Espécies):
             
