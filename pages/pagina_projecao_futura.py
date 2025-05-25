@@ -291,12 +291,28 @@ def render_page():
                                 hoverinfo='skip'
                             ))
                             
+                            # Calculate aspect ratio for proper map display
+                            lat_range = bounds[3] - bounds[1]  # max_lat - min_lat
+                            lon_range = bounds[2] - bounds[0]  # max_lon - min_lon
+                            
+                            # At Brazil's latitude (~15°S), 1 degree longitude ≈ 0.97 degree latitude in distance
+                            # So we need to adjust the aspect ratio
+                            central_lat = (bounds[1] + bounds[3]) / 2
+                            lat_correction = np.cos(np.radians(central_lat))
+                            
                             fig_current_binary.update_layout(
                                 title=f"Presente (threshold: {st.session_state.get('projection_threshold', threshold):.3f})",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
                                 height=400,
-                                xaxis=dict(scaleanchor='y', scaleratio=1)
+                                xaxis=dict(
+                                    scaleanchor="y",
+                                    scaleratio=lat_correction,
+                                    constrain="domain"
+                                ),
+                                yaxis=dict(
+                                    constrain="domain"
+                                )
                             )
                             st.plotly_chart(fig_current_binary, use_container_width=True)
                         
@@ -324,12 +340,28 @@ def render_page():
                                 hoverinfo='skip'
                             ))
                             
+                            # Calculate aspect ratio for proper map display
+                            lat_range = bounds[3] - bounds[1]  # max_lat - min_lat
+                            lon_range = bounds[2] - bounds[0]  # max_lon - min_lon
+                            
+                            # At Brazil's latitude (~15°S), 1 degree longitude ≈ 0.97 degree latitude in distance
+                            # So we need to adjust the aspect ratio
+                            central_lat = (bounds[1] + bounds[3]) / 2
+                            lat_correction = np.cos(np.radians(central_lat))
+                            
                             fig_future_binary.update_layout(
                                 title=f"{cenario} - {periodo} (threshold: {threshold:.3f})",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
                                 height=400,
-                                xaxis=dict(scaleanchor='y', scaleratio=1)
+                                xaxis=dict(
+                                    scaleanchor="y",
+                                    scaleratio=lat_correction,
+                                    constrain="domain"
+                                ),
+                                yaxis=dict(
+                                    constrain="domain"
+                                )
                             )
                             st.plotly_chart(fig_future_binary, use_container_width=True)
                         
@@ -346,11 +378,28 @@ def render_page():
                                 showscale=True,
                                 colorbar=dict(title="Probabilidade")
                             ))
+                            # Calculate aspect ratio for proper map display
+                            lat_range = bounds[3] - bounds[1]  # max_lat - min_lat
+                            lon_range = bounds[2] - bounds[0]  # max_lon - min_lon
+                            
+                            # At Brazil's latitude (~15°S), 1 degree longitude ≈ 0.97 degree latitude in distance
+                            # So we need to adjust the aspect ratio
+                            central_lat = (bounds[1] + bounds[3]) / 2
+                            lat_correction = np.cos(np.radians(central_lat))
+                            
                             fig_current_prob.update_layout(
                                 title="Presente",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
-                                height=400
+                                height=400,
+                                xaxis=dict(
+                                    scaleanchor="y",
+                                    scaleratio=lat_correction,
+                                    constrain="domain"
+                                ),
+                                yaxis=dict(
+                                    constrain="domain"
+                                )
                             )
                             # Add Brazil boundary
                             fig_current_prob.add_trace(go.Scattergl(
@@ -371,11 +420,28 @@ def render_page():
                                 showscale=True,
                                 colorbar=dict(title="Probabilidade")
                             ))
+                            # Calculate aspect ratio for proper map display
+                            lat_range = bounds[3] - bounds[1]  # max_lat - min_lat
+                            lon_range = bounds[2] - bounds[0]  # max_lon - min_lon
+                            
+                            # At Brazil's latitude (~15°S), 1 degree longitude ≈ 0.97 degree latitude in distance
+                            # So we need to adjust the aspect ratio
+                            central_lat = (bounds[1] + bounds[3]) / 2
+                            lat_correction = np.cos(np.radians(central_lat))
+                            
                             fig_future_prob.update_layout(
                                 title=f"{cenario} - {periodo}",
                                 xaxis_title="Longitude",
                                 yaxis_title="Latitude",
-                                height=400
+                                height=400,
+                                xaxis=dict(
+                                    scaleanchor="y",
+                                    scaleratio=lat_correction,
+                                    constrain="domain"
+                                ),
+                                yaxis=dict(
+                                    constrain="domain"
+                                )
                             )
                             # Add Brazil boundary
                             fig_future_prob.add_trace(go.Scattergl(
@@ -452,11 +518,33 @@ def render_page():
                                 tickmode='array'
                             )
                         ))
+                        # Calculate aspect ratio for proper map display
+                        lat_range = bounds[3] - bounds[1]  # max_lat - min_lat
+                        lon_range = bounds[2] - bounds[0]  # max_lon - min_lon
+                        
+                        # At Brazil's latitude (~15°S), 1 degree longitude ≈ 0.97 degree latitude in distance
+                        # So we need to adjust the aspect ratio
+                        central_lat = (bounds[1] + bounds[3]) / 2
+                        lat_correction = np.cos(np.radians(central_lat))
+                        
+                        # Calculate proper figure dimensions
+                        fig_height = 600
+                        fig_width = fig_height * (lon_range / lat_range) * lat_correction
+                        
                         fig_change.update_layout(
                             title=f"Mudança na Distribuição (Futuro - Presente) - Threshold: {threshold:.3f}",
                             xaxis_title="Longitude",
                             yaxis_title="Latitude",
-                            height=500
+                            height=fig_height,
+                            width=fig_width,
+                            xaxis=dict(
+                                scaleanchor="y",
+                                scaleratio=lat_correction,
+                                constrain="domain"
+                            ),
+                            yaxis=dict(
+                                constrain="domain"
+                            )
                         )
                         # Add Brazil boundary
                         fig_change.add_trace(go.Scattergl(
@@ -596,7 +684,7 @@ def render_page():
                             binary_jpeg_buffer = io.BytesIO()
                             
                             # Create colorful visualization
-                            fig, ax = plt.subplots(figsize=(10, 8))
+                            _, ax = plt.subplots(figsize=(10, 8))
                             
                             # Create custom colormap for binary map (white for 0, dark green for 1)
                             cmap = mcolors.ListedColormap(['white', 'darkgreen'])
@@ -635,7 +723,7 @@ def render_page():
                                 prob_jpeg_buffer = io.BytesIO()
                                 
                                 # Create colorful visualization
-                                fig, ax = plt.subplots(figsize=(10, 8))
+                                _, ax = plt.subplots(figsize=(10, 8))
                                 
                                 # Use Viridis colormap for probability
                                 im = ax.imshow(prediction_map_future, cmap='viridis', extent=[bounds[0], bounds[2], bounds[1], bounds[3]], vmin=0, vmax=1, origin='upper')
@@ -671,7 +759,7 @@ def render_page():
                                 change_jpeg_buffer = io.BytesIO()
                                 
                                 # Create colorful visualization
-                                fig, ax = plt.subplots(figsize=(10, 8))
+                                _, ax = plt.subplots(figsize=(10, 8))
                                 
                                 # Create custom colormap for change map (red for loss, gray for no change, green for gain)
                                 cmap = mcolors.ListedColormap(['red', 'lightgray', 'green'])

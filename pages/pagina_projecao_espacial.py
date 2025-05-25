@@ -398,13 +398,30 @@ def create_probability_map(prediction_map, bounds):
         zmax=max_val
     ))
     
+    # Calculate aspect ratio for proper map display
+    lat_range = bounds.top - bounds.bottom
+    lon_range = bounds.right - bounds.left
+    central_lat = (bounds.bottom + bounds.top) / 2
+    lat_correction = np.cos(np.radians(central_lat))
+    
+    # Calculate proper figure dimensions
+    fig_height = 600
+    fig_width = fig_height * (lon_range / lat_range) * lat_correction
+    
     fig.update_layout(
         title='Mapa de Probabilidade de Adequabilidade',
         xaxis_title='Longitude',
         yaxis_title='Latitude',
-        height=600,
-        xaxis=dict(scaleanchor='y')
-        # Removed yaxis autorange='reversed'
+        height=fig_height,
+        width=fig_width,
+        xaxis=dict(
+            scaleanchor='y',
+            scaleratio=lat_correction,
+            constrain='domain'
+        ),
+        yaxis=dict(
+            constrain='domain'
+        )
     )
     
     return fig
@@ -432,13 +449,30 @@ def create_binary_map(binary_map, bounds):
         zmax=1
     ))
     
+    # Calculate aspect ratio for proper map display
+    lat_range = bounds.top - bounds.bottom
+    lon_range = bounds.right - bounds.left
+    central_lat = (bounds.bottom + bounds.top) / 2
+    lat_correction = np.cos(np.radians(central_lat))
+    
+    # Calculate proper figure dimensions
+    fig_height = 600
+    fig_width = fig_height * (lon_range / lat_range) * lat_correction
+    
     fig.update_layout(
         title='Mapa Binário de Adequabilidade',
         xaxis_title='Longitude',
         yaxis_title='Latitude',
-        height=600,
-        xaxis=dict(scaleanchor='y')
-        # Removed yaxis autorange='reversed'
+        height=fig_height,
+        width=fig_width,
+        xaxis=dict(
+            scaleanchor='y',
+            scaleratio=lat_correction,
+            constrain='domain'
+        ),
+        yaxis=dict(
+            constrain='domain'
+        )
     )
     
     return fig
