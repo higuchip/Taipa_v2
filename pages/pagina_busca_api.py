@@ -186,14 +186,8 @@ def render_page():
         df = pd.DataFrame(df_data)
         st.session_state['gbif_data'] = df
         
-        # Store species name - get from first occurrence if available
-        if df_data and 'scientificName' in df_data[0]:
-            species_for_session = df_data[0]['scientificName']
-        else:
-            # Fallback to session state if already exists
-            species_for_session = st.session_state.get('species_name', 'Unknown Species')
-            
-        st.session_state['species_name'] = species_for_session  # Store species name
+        # Use species name already stored from search, don't overwrite with GBIF record name
+        species_for_session = st.session_state.get('species_name', 'Unknown Species')
 
         # Display data table
         with st.expander("Dados das ocorrências", expanded=False):

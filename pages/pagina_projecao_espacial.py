@@ -483,7 +483,7 @@ def save_raster(data, metadata, filename):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.tif') as tmp_file:
             # Ensure data is float32 for compatibility
             data_to_save = data.astype(np.float32)
-            
+
             # Write raster
             with rasterio.open(
                 tmp_file.name,
@@ -500,19 +500,22 @@ def save_raster(data, metadata, filename):
                 # Replace NaN with nodata value
                 data_to_save[np.isnan(data_to_save)] = -9999
                 dst.write(data_to_save, 1)
-            
-            # Read file for download
+
+            # Read file into memory before cleanup
             with open(tmp_file.name, 'rb') as f:
-                st.download_button(
-                    label=f"📥 Clique para baixar {filename}",
-                    data=f.read(),
-                    file_name=filename,
-                    mime="image/tiff"
-                )
-            
-            # Clean up
+                raster_bytes = f.read()
+
+            # Clean up temp file
             os.unlink(tmp_file.name)
-            
+
+            # Provide download button with in-memory data
+            st.download_button(
+                label=f"📥 Clique para baixar {filename}",
+                data=raster_bytes,
+                file_name=filename,
+                mime="image/tiff"
+            )
+
     except Exception as e:
         st.error(f"Erro ao salvar raster: {e}")
 

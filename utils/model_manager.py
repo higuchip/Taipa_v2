@@ -156,7 +156,7 @@ class ModelManager:
                             model = models[idx]
                             if self.delete_model(model['name']):
                                 st.success(f"Modelo {model['name']} deletado com sucesso!")
-                        st.experimental_rerun()
+                        st.rerun()
         
         else:
             st.dataframe(df)

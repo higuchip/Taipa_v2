@@ -23,8 +23,8 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     """
     if not center and occurrences:
         # Calculate center from occurrences
-        lats = [occ["lat"] for occ in occurrences if occ.get("lat")]
-        lons = [occ["lon"] for occ in occurrences if occ.get("lon")]
+        lats = [occ["lat"] for occ in occurrences if occ.get("lat") is not None]
+        lons = [occ["lon"] for occ in occurrences if occ.get("lon") is not None]
         if lats and lons:
             center = (sum(lats) / len(lats), sum(lons) / len(lons))
         else:
@@ -65,7 +65,7 @@ def create_occurrence_map(occurrences: List[Dict], center: Tuple[float, float] =
     
     # Add occurrence markers as simple blue circles
     for occ in occurrences:
-        if occ.get("lat") and occ.get("lon"):
+        if occ.get("lat") is not None and occ.get("lon") is not None:
             popup_text = f"""
             <b>{occ.get('scientific_name', 'Unknown')}</b><br>
             Country: {occ.get('country', 'Unknown')}<br>
@@ -146,10 +146,14 @@ def extract_raster_values(points: Union[List[Tuple[float, float]], np.ndarray],
                         else:
                             # WorldClim temperature data is stored as integers multiplied by 10
                             # Check if this is a temperature variable (bio1-bio11)
-                            if any(temp_var in layer_name for temp_var in 
-                                   ['bio1', 'bio2', 'bio3', 'bio4', 'bio5', 'bio6', 
-                                    'bio7', 'bio8', 'bio9', 'bio10', 'bio11']):
-                                value = value / WORLDCLIM_TEMP_SCALE
+                            # Extract variable number to avoid substring matching issues
+                            # (e.g., 'bio1' matching 'bio12')
+                            import re
+                            match = re.search(r'bio(\d+)', layer_name)
+                            if match:
+                                var_num = int(match.group(1))
+                                if var_num in [1, 2, 5, 6, 7, 8, 9, 10, 11]:
+                                    value = value / WORLDCLIM_TEMP_SCALE
                             
                         values.append(value)
                         
@@ -217,7 +221,7 @@ def create_heatmap(occurrences: List[Dict]) -> folium.Map:
     # Extract coordinates
     heat_data = []
     for occ in occurrences:
-        if occ.get("lat") and occ.get("lon"):
+        if occ.get("lat") is not None and occ.get("lon") is not None:
             heat_data.append([occ["lat"], occ["lon"]])
     
     if not heat_data:

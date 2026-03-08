@@ -60,7 +60,6 @@ conversation_summary.md
 
 # Local configuration
 config.py
-config.json
 local_settings.py
 
 # Temporary files

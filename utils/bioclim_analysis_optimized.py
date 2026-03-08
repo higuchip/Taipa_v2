@@ -717,31 +717,31 @@ class BioclimAnalyzer:
             
             if len(high_corr_indices[0]) > 0:
                 to_remove = set()
-                
+
                 for i, j in zip(high_corr_indices[0], high_corr_indices[1]):
                     var1 = variables[i]
                     var2 = variables[j]
-                    
+
                     if var1 not in to_remove and var2 not in to_remove:
                         # Calculate VIF for both variables in the current set
                         # to decide which one to remove
                         current_vars = [v for v in variables if v not in to_remove]
-                        
+
                         # Get VIF for each variable
                         if len(current_vars) > 2:
                             X_current = df[current_vars].dropna()
                             vif_dict = {}
-                            
+
                             for idx, var in enumerate(current_vars):
                                 try:
                                     vif_dict[var] = variance_inflation_factor(X_current.values, idx)
                                 except:
                                     vif_dict[var] = np.inf
-                            
+
                             # Remove the variable with higher VIF
                             vif1 = vif_dict.get(var1, np.inf)
                             vif2 = vif_dict.get(var2, np.inf)
-                            
+
                             # If both have high VIF, remove the one with higher value
                             # If VIFs are similar, remove based on correlation strength
                             if abs(vif1 - vif2) < 0.1:  # Similar VIF values
@@ -754,7 +754,7 @@ class BioclimAnalyzer:
                         else:
                             # If only 2 variables left, remove one arbitrarily
                             to_remove.add(var2)
-                
+
                 if to_remove:
                     variables = [var for var in variables if var not in to_remove]
                     if return_steps:
@@ -765,9 +765,13 @@ class BioclimAnalyzer:
                             'remaining_variables': variables.copy()
                         })
                 else:
-                    break
+                    # No correlations to remove; check if VIF is still above threshold
+                    if max_vif <= vif_threshold:
+                        break
             else:
-                break
+                # No high correlations; check if VIF is still above threshold
+                if max_vif <= vif_threshold:
+                    break
             
             if len(variables) < 2:
                 break

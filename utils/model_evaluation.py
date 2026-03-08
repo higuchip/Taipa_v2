@@ -22,13 +22,16 @@ class ModelEvaluator:
         # Basic metrics
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
         
+        sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+        specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+
         metrics = {
-            'accuracy': (tp + tn) / (tp + tn + fp + fn),
-            'sensitivity': tp / (tp + fn),  # True Positive Rate
-            'specificity': tn / (tn + fp),  # True Negative Rate
+            'accuracy': (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0,
+            'sensitivity': sensitivity,  # True Positive Rate
+            'specificity': specificity,  # True Negative Rate
             'precision': tp / (tp + fp) if (tp + fp) > 0 else 0,
             'f1_score': 2 * tp / (2 * tp + fp + fn) if (2 * tp + fp + fn) > 0 else 0,
-            'tss': (tp / (tp + fn)) + (tn / (tn + fp)) - 1,  # True Skill Statistic
+            'tss': sensitivity + specificity - 1,  # True Skill Statistic
             'kappa': self._calculate_kappa(y_true, y_pred),
             'confusion_matrix': {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp}
         }

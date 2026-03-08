@@ -241,8 +241,8 @@ def render_page():
                 # Reshape for prediction
                 X_future = bio_data_future.reshape(n_vars, -1).T
                 
-                # Remove NoData
-                valid_mask = ~np.any(X_future == -9999, axis=1)
+                # Remove NoData (including values converted by temperature scaling)
+                valid_mask = ~np.any(np.logical_or(X_future <= -999, np.isnan(X_future)), axis=1)
                 X_valid = X_future[valid_mask]
                 
                 # Make predictions
@@ -272,9 +272,20 @@ def render_page():
                 valid_pixels = ~np.isnan(prediction_map_future)
                 binary_map_future[valid_pixels] = (prediction_map_future[valid_pixels] >= threshold).astype(float)
                 
-                # Get current binary map
+                # Get current binary map and resize to match future dimensions
                 if 'binary_map' in st.session_state:
-                    binary_map_current = st.session_state['binary_map']
+                    binary_map_current_raw = st.session_state['binary_map']
+                    # Resize current map to match future map dimensions if different
+                    if binary_map_current_raw.shape != binary_map_future.shape:
+                        from scipy.ndimage import zoom
+                        zoom_factors = (
+                            binary_map_future.shape[0] / binary_map_current_raw.shape[0],
+                            binary_map_future.shape[1] / binary_map_current_raw.shape[1]
+                        )
+                        # Use nearest interpolation for binary map
+                        binary_map_current = zoom(binary_map_current_raw, zoom_factors, order=0)
+                    else:
+                        binary_map_current = binary_map_current_raw
                 else:
                     st.error("Mapa binário atual não encontrado. Execute uma projeção espacial primeiro.")
                     return

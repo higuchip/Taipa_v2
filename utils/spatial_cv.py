@@ -91,8 +91,8 @@ class BlockCV:
         n_blocks_x = int(np.sqrt(self.n_blocks))
         n_blocks_y = int(np.ceil(self.n_blocks / n_blocks_x))
         
-        block_width = (max_x - min_x) / n_blocks_x
-        block_height = (max_y - min_y) / n_blocks_y
+        block_width = (max_x - min_x) / n_blocks_x if max_x != min_x else 1.0
+        block_height = (max_y - min_y) / n_blocks_y if max_y != min_y else 1.0
         
         # Assign points to blocks
         block_labels = np.zeros(len(coordinates), dtype=int)
@@ -173,8 +173,10 @@ def spatial_train_test_split(X: np.ndarray, y: np.ndarray,
         
     elif method == 'block':
         # Block-based split
-        block_cv = BlockCV(n_blocks=int(1/test_size))
-        splits = list(block_cv.split(X, y, coordinates, n_splits=1))
+        n_blocks = int(1/test_size)
+        block_cv = BlockCV(n_blocks=n_blocks)
+        splits = list(block_cv.split(X, y, coordinates, n_splits=n_blocks))
+        # Use the first fold: test is ~1/n_blocks of the data
         train_idx, test_idx = splits[0]
         
     elif method == 'cluster':

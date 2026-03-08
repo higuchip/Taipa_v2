@@ -60,11 +60,13 @@ class SDMModel:
     def prepare_data(self, occurrence_data: pd.DataFrame, pseudo_absence_data: pd.DataFrame,
                     env_features: List[str]) -> Tuple[np.ndarray, np.ndarray]:
         """Prepare data for training"""
-        # Combine occurrence and pseudo-absence data
-        occurrence_data['presence'] = 1
-        pseudo_absence_data['presence'] = 0
-        
-        all_data = pd.concat([occurrence_data, pseudo_absence_data], ignore_index=True)
+        # Combine occurrence and pseudo-absence data (copy to avoid mutating originals)
+        occ_copy = occurrence_data.copy()
+        abs_copy = pseudo_absence_data.copy()
+        occ_copy['presence'] = 1
+        abs_copy['presence'] = 0
+
+        all_data = pd.concat([occ_copy, abs_copy], ignore_index=True)
         
         # Extract features and labels
         X = all_data[env_features].values
@@ -148,7 +150,9 @@ class SDMModel:
             'metadata': getattr(self, 'metadata', {})
         }
         
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirpath = os.path.dirname(filepath)
+        if dirpath:
+            os.makedirs(dirpath, exist_ok=True)
         joblib.dump(model_data, filepath)
         self.logger.info(f"Model saved to {filepath}")
     

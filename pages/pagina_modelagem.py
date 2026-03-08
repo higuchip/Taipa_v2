@@ -373,7 +373,7 @@ def render_page():
             """)
             return
         
-        if min_samples_per_class < n_folds:
+        if use_cross_validation and min_samples_per_class < n_folds:
             st.warning(f"""
             ⚠️ **Aviso**: Poucos dados para validação cruzada!
             

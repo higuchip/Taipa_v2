@@ -105,7 +105,8 @@ def render_page():
         ))
         
         if st.button("Ir para Busca de Espécies"):
-            st.switch_page("pages/pagina_busca_api.py")
+            st.session_state.current_page = 1
+            st.rerun()
         return
     
     # Get species name if available
